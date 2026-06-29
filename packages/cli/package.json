@@ -19,11 +19,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@doclient/core": "*",
-    "@doclient/renderer-go": "*",
+    "@doclient/core": "workspace:*",
+    "@doclient/renderer-go": "workspace:*",
     "tsx": "^4.19.0"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1"
+    "@types/node": "^26.0.1",
+    "tsup": "^8.5.1"
   }
 }

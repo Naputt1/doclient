@@ -896,7 +896,11 @@ require (
 `;
 }
 
-export function createGoRenderer(options?: { package?: string; module?: string; legacySnakeCase?: boolean }): Renderer {
+export function createGoRenderer(options?: {
+  package?: string;
+  module?: string;
+  legacySnakeCase?: boolean;
+}): Renderer {
   const pkg = options?.package ?? 'goshopee';
   const modPath = options?.module;
   const legacySnakeCase = options?.legacySnakeCase ?? false;
@@ -918,7 +922,12 @@ export function createGoRenderer(options?: { package?: string; module?: string; 
         });
       }
 
-      const structGen = new StructGenerator(packageName, typeOverrides, structTypeOverrides, legacySnakeCase);
+      const structGen = new StructGenerator(
+        packageName,
+        typeOverrides,
+        structTypeOverrides,
+        legacySnakeCase,
+      );
 
       for (const mod of ir.modules) {
         for (const ep of mod.endpoints) {

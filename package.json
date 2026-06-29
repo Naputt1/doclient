@@ -2,18 +2,15 @@
   "name": "doclient",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "examples/*"
-  ],
+  "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "build": "tsup",
+    "build": "turbo run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint packages/ examples/",
     "lint:fix": "eslint --fix packages/ examples/",
     "format": "prettier --check packages/ examples/",
     "format:fix": "prettier --write packages/ examples/",
-    "check": "npm run lint && npm run format && npm run typecheck",
+    "check": "turbo run build && pnpm lint && pnpm format && pnpm typecheck",
     "test": "vitest run"
   },
   "devDependencies": {
@@ -23,6 +20,7 @@
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.1",
     "tsup": "^8.4.0",
+    "turbo": "^2.10.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.62.0",
     "vitest": "^3.1.0"

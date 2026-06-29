@@ -15,7 +15,10 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit"
   },
+  "devDependencies": {
+    "tsup": "^8.5.1"
+  },
   "dependencies": {
-    "@doclient/core": "*"
+    "@doclient/core": "workspace:*"
   }
 }
