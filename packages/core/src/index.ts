@@ -13,16 +13,13 @@ export type {
   SourceAdapter,
   Renderer,
   FileOutput,
-} from './types.js'
+} from './types.js';
 
-export {
-  defineConfig,
-  defineRenderer,
-} from './types.js'
+export { defineConfig, defineRenderer } from './types.js';
 
 export {
   runPipeline,
   filterByStaticModules,
   getModuleDisplayName,
   toPascalCase,
-} from './pipeline.js'
+} from './pipeline.js';

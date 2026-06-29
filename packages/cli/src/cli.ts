@@ -1,17 +1,17 @@
-import { writeFileSync, mkdirSync } from 'node:fs'
-import { join, dirname, resolve } from 'node:path'
-import { argv, cwd, exit } from 'node:process'
-import type { Config } from '@doclient/core'
-import { runPipeline } from '@doclient/core'
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { argv, cwd, exit } from 'node:process';
+import type { Config } from '@doclient/core';
+import { runPipeline } from '@doclient/core';
 
 export async function main(): Promise<void> {
-  const args = argv.slice(2)
-  let configPath = ''
+  const args = argv.slice(2);
+  let configPath = '';
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--config' || args[i] === '-c') {
-      configPath = args[i + 1]
-      i++
+      configPath = args[i + 1];
+      i++;
     } else if (args[i] === '--help' || args[i] === '-h') {
       console.log(`doclient - API doc scraper -> typed SDK generator
 
@@ -22,54 +22,54 @@ Options:
   -c, --config   Path to config file (required)
   --out-dir      Output directory (overrides config.outputDir)
   -h, --help     Show this help
-`)
-      exit(0)
+`);
+      exit(0);
     }
   }
 
   if (!configPath) {
-    console.error('Error: --config is required')
-    exit(1)
+    console.error('Error: --config is required');
+    exit(1);
   }
 
-  const absConfigPath = resolve(cwd(), configPath)
+  const absConfigPath = resolve(cwd(), configPath);
 
-  const config: Config = await loadConfig(absConfigPath)
+  const config: Config = await loadConfig(absConfigPath);
 
-  console.log(`Running doclient for: ${config.name}`)
-  const files = await runPipeline(config)
+  console.log(`Running doclient for: ${config.name}`);
+  const files = await runPipeline(config);
 
-  const outDir = resolve(cwd(), config.outputDir ?? '.')
+  const outDir = resolve(cwd(), config.outputDir ?? '.');
 
   for (const file of files) {
-    const fullPath = join(outDir, file.path)
-    mkdirSync(dirname(fullPath), { recursive: true })
-    writeFileSync(fullPath, file.content, 'utf-8')
-    console.log(`  wrote ${file.path}`)
+    const fullPath = join(outDir, file.path);
+    mkdirSync(dirname(fullPath), { recursive: true });
+    writeFileSync(fullPath, file.content, 'utf-8');
+    console.log(`  wrote ${file.path}`);
   }
 
-  console.log(`\nDone - ${files.length} files generated in ${outDir}`)
+  console.log(`\nDone - ${files.length} files generated in ${outDir}`);
 }
 
 async function loadConfig(absPath: string): Promise<Config> {
-  let mod
+  let mod;
   try {
-    const tsx = await import('tsx/esm/api')
+    const tsx = await import('tsx/esm/api');
     if (typeof tsx.register === 'function') {
-      tsx.register()
+      tsx.register();
     }
-    mod = await import(absPath)
+    mod = await import(absPath);
   } catch {
-    mod = await import(absPath)
+    mod = await import(absPath);
   }
-  const config = mod.default ?? mod
-  return typeof config === 'function' ? config() : config as Config
+  const config = mod.default ?? mod;
+  return typeof config === 'function' ? config() : (config as Config);
 }
 
-const isMain = argv[1]?.endsWith('cli.ts') || argv[1]?.endsWith('cli.js')
+const isMain = argv[1]?.endsWith('cli.ts') || argv[1]?.endsWith('cli.js');
 if (isMain) {
   main().catch((err) => {
-    console.error(err)
-    exit(1)
-  })
+    console.error(err);
+    exit(1);
+  });
 }

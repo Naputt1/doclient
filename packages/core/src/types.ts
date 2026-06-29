@@ -1,105 +1,105 @@
 export interface IR {
-  name: string
-  modules: IRModule[]
-  constants: IRConstant[]
-  errors: IRError[]
-  fixtures: IRFixture[]
+  name: string;
+  modules: IRModule[];
+  constants: IRConstant[];
+  errors: IRError[];
+  fixtures: IRFixture[];
 }
 
 export interface IRModule {
-  name: string
-  moduleId: number
-  endpoints: IREndpoint[]
+  name: string;
+  moduleId: number;
+  endpoints: IREndpoint[];
 }
 
 export interface IREndpoint {
-  name: string
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  path: string
-  fullPath: string
-  description: string
-  docUrl: string
-  apiType: 'Shop' | 'Merchant' | 'Public'
-  isUpload: boolean
-  fullApiName: string
-  requestParams: IRParam[]
-  responseParams: IRParam[]
-  errors: IRError[]
+  name: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  fullPath: string;
+  description: string;
+  docUrl: string;
+  apiType: 'Shop' | 'Merchant' | 'Public';
+  isUpload: boolean;
+  fullApiName: string;
+  requestParams: IRParam[];
+  responseParams: IRParam[];
+  errors: IRError[];
 }
 
 export interface IRParam {
-  name: string
-  type: string
-  shopeeType: string
-  description: string
-  required: boolean
-  children: IRParam[]
+  name: string;
+  type: string;
+  shopeeType: string;
+  description: string;
+  required: boolean;
+  children: IRParam[];
 }
 
 export interface IRConstant {
-  typeName: string
-  baseType: string
-  values: IRConstantValue[]
+  typeName: string;
+  baseType: string;
+  values: IRConstantValue[];
 }
 
 export interface IRConstantValue {
-  name: string
-  value: string
+  name: string;
+  value: string;
 }
 
 export interface IRError {
-  code: string
-  description: string
+  code: string;
+  description: string;
 }
 
 export interface IRFixture {
-  filename: string
-  content: string
+  filename: string;
+  content: string;
 }
 
 export interface Config {
-  name: string
-  source: SourceAdapter
-  output: Renderer
-  outputDir?: string
-  mappings?: MappingsConfig
+  name: string;
+  source: SourceAdapter;
+  output: Renderer;
+  outputDir?: string;
+  mappings?: MappingsConfig;
 }
 
 export interface MappingsConfig {
-  typeOverrides?: Record<string, string>
-  structTypeOverrides?: Record<string, Record<string, string>>
-  enums?: Record<string, EnumDef>
-  ignoreAPIs?: string[]
-  staticModules?: string[]
+  typeOverrides?: Record<string, string>;
+  structTypeOverrides?: Record<string, Record<string, string>>;
+  enums?: Record<string, EnumDef>;
+  ignoreAPIs?: string[];
+  staticModules?: string[];
 }
 
 export interface EnumDef {
-  base: 'string' | 'int'
-  values: Record<string, string>
+  base: 'string' | 'int';
+  values: Record<string, string>;
 }
 
 export interface SourceAdapter {
-  name: string
-  execute(config: Config): Promise<IR>
+  name: string;
+  execute(config: Config): Promise<IR>;
 }
 
 export interface Renderer {
-  name: string
-  render(ir: IR, config: Config): Promise<FileOutput[]>
+  name: string;
+  render(ir: IR, config: Config): Promise<FileOutput[]>;
 }
 
 export interface FileOutput {
-  path: string
-  content: string
+  path: string;
+  content: string;
 }
 
 export function defineConfig(config: Config): Config {
-  if (!config.name) throw new Error('Config must have a name')
-  if (!config.source) throw new Error('Config must have a source')
-  if (!config.output) throw new Error('Config must have an output')
-  return config
+  if (!config.name) throw new Error('Config must have a name');
+  if (!config.source) throw new Error('Config must have a source');
+  if (!config.output) throw new Error('Config must have an output');
+  return config;
 }
 
 export function defineRenderer(renderer: Renderer): Renderer {
-  return renderer
+  return renderer;
 }

@@ -22,5 +22,8 @@
     "@doclient/core": "*",
     "@doclient/renderer-go": "*",
     "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1"
   }
 }

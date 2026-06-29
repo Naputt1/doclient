@@ -1,7 +1,7 @@
 export interface ClientParams {
-  packageName: string
-  servicesSection: string
-  servicesInitSection: string
+  packageName: string;
+  servicesSection: string;
+  servicesInitSection: string;
 }
 
 export function renderClientFile(p: ClientParams): string {
@@ -572,5 +572,5 @@ func (bs BoolString) String() string {
 	if bs { return "TRUE" }
 	return "FALSE"
 }
-`
+`;
 }
