@@ -44,16 +44,24 @@ function toPascalCase(s: string): string {
     .join('');
 }
 
-function toSnakeCase(s: string): string {
+function toSnakeCase(s: string, legacy?: boolean): string {
+  if (legacy) {
+    return s
+      .replace(/([A-Z])/g, '_$1')
+      .toLowerCase()
+      .replace(/^_/, '')
+      .replace(/__+/g, '_');
+  }
   return s
-    .replace(/([A-Z])/g, '_$1')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .replace(/([a-z\d])([A-Z])/g, '$1_$2')
     .toLowerCase()
     .replace(/^_/, '')
     .replace(/__+/g, '_');
 }
 
-function getFileName(moduleName: string): string {
-  return toSnakeCase(moduleName);
+function getFileName(moduleName: string, legacy?: boolean): string {
+  return toSnakeCase(moduleName, legacy);
 }
 
 function isParamRequired(req: boolean | string): boolean {
@@ -70,15 +78,18 @@ class StructGenerator {
   private typeOverrides: Record<string, string>;
   private structTypeOverrides: Record<string, Record<string, string>>;
   private packageName: string;
+  private legacySnakeCase: boolean;
 
   constructor(
     packageName: string,
     typeOverrides: Record<string, string>,
     structTypeOverrides: Record<string, Record<string, string>>,
+    legacySnakeCase?: boolean,
   ) {
     this.packageName = packageName;
     this.typeOverrides = typeOverrides;
     this.structTypeOverrides = structTypeOverrides;
+    this.legacySnakeCase = legacySnakeCase ?? false;
   }
 
   getNameForChain(...chain: string[]): string {
@@ -90,7 +101,7 @@ class StructGenerator {
     moduleName: string,
     ep: IREndpoint,
   ): { requestStruct: GoStruct | null; responseStruct: GoStruct } {
-    const fileName = getFileName(moduleName);
+    const fileName = getFileName(moduleName, this.legacySnakeCase);
 
     const reqStruct =
       ep.requestParams.length > 0
@@ -354,7 +365,7 @@ class StructGenerator {
   }
 
   getStructsForFile(moduleName: string): GoStruct[] {
-    const fileName = getFileName(moduleName);
+    const fileName = getFileName(moduleName, this.legacySnakeCase);
     return Array.from(this.allStructs.values()).filter((s) => s.fileName === fileName);
   }
 
@@ -885,9 +896,10 @@ require (
 `;
 }
 
-export function createGoRenderer(options?: { package?: string; module?: string }): Renderer {
+export function createGoRenderer(options?: { package?: string; module?: string; legacySnakeCase?: boolean }): Renderer {
   const pkg = options?.package ?? 'goshopee';
   const modPath = options?.module;
+  const legacySnakeCase = options?.legacySnakeCase ?? false;
 
   return {
     name: 'go',
@@ -906,7 +918,7 @@ export function createGoRenderer(options?: { package?: string; module?: string }
         });
       }
 
-      const structGen = new StructGenerator(packageName, typeOverrides, structTypeOverrides);
+      const structGen = new StructGenerator(packageName, typeOverrides, structTypeOverrides, legacySnakeCase);
 
       for (const mod of ir.modules) {
         for (const ep of mod.endpoints) {
@@ -958,7 +970,7 @@ export function createGoRenderer(options?: { package?: string; module?: string }
       files.push({ path: 'setup_test.go', content: setupContent });
 
       for (const svc of serviceList) {
-        const fileName = getFileName(svc.name);
+        const fileName = getFileName(svc.name, legacySnakeCase);
         const moduleStructs = structGen.getStructsForFile(svc.name);
 
         files.push({
