@@ -1,0 +1,21 @@
+{
+  "name": "doclient",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint ok'",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@doclient/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "doclient": "./bin.mjs"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@doclient/core": "*",
+    "@doclient/renderer-go": "*",
+    "tsx": "^4.19.0"
+  }
+}

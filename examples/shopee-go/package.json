@@ -1,0 +1,9 @@
+{
+  "name": "example-shopee-go",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@doclient/core": "*",
+    "@doclient/renderer-go": "*"
+  }
+}
