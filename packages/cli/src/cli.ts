@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { argv, cwd, exit } from 'node:process';
+import { spawn } from 'node:child_process';
 import type { Config } from '@doclient/core';
 import { runPipeline } from '@doclient/core';
 
@@ -55,6 +56,10 @@ Options:
     writeFileSync(fullPath, file.content, 'utf-8');
     console.log(`  wrote ${file.path}`);
   }
+
+  const proc = spawn('gofmt', ['-w', '.'], { cwd: outDir, stdio: 'ignore' });
+  proc.on('error', () => {});
+  proc.unref();
 
   console.log(`\nDone - ${files.length} files generated in ${outDir}`);
 }
