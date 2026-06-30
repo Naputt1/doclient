@@ -74,7 +74,7 @@ type Client[T any] struct {
 
 type DefaultClient = Client[any]
 
-func NewClient[T any](app App, opts ...ClientOption[T]) *Client[T] {
+func NewClient[T any](app App, opts ...Option[T]) *Client[T] {
 	baseURL, err := url.Parse(app.APIURL)
 	if err != nil {
 		panic(err)
@@ -96,7 +96,7 @@ func NewClient[T any](app App, opts ...ClientOption[T]) *Client[T] {
 	return c
 }
 
-func NewDefaultClient(app App, opts ...DefaultClientOption) *DefaultClient {
+func NewDefaultClient(app App, opts ...DefaultOption) *DefaultClient {
 	return NewClient(app, opts...)
 }
 
