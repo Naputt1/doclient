@@ -169,8 +169,6 @@ class StructGenerator {
     return {
       requestStruct: reqStruct,
       responseStruct: mainResp,
-      requestTypeName: reqStruct?.name ?? '',
-      responseTypeName: mainResp.name,
     };
   }
 
@@ -941,6 +939,7 @@ export function createGoRenderer(options?: {
           serviceList.push({ name: mod.name, endpoints: mod.endpoints });
         }
       }
+      serviceList.sort((a, b) => a.name.localeCompare(b.name));
 
       const allServices: ServiceInfo[] = [
         ...staticServices,
@@ -950,6 +949,7 @@ export function createGoRenderer(options?: {
           implName: s.name + 'ServiceOp',
         })),
       ];
+      allServices.sort((a, b) => a.name.localeCompare(b.name));
 
       let servicesSection = '';
       let servicesInitSection = '';

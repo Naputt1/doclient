@@ -241,20 +241,27 @@ export const shopeeSource: SourceAdapter = {
           fullApiName: name,
           requestParams: requestParams
             .filter((p) => !isCommonParam(p.name))
-            .map((p) => mapParam(p, true, typeOverrides)),
-          responseParams: responseParams.map((p) => mapParam(p, false, typeOverrides)),
+            .map((p) => mapParam(p, true, typeOverrides))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          responseParams: responseParams
+            .map((p) => mapParam(p, false, typeOverrides))
+            .sort((a, b) => a.name.localeCompare(b.name)),
           errors: (info.error_list ?? [])
             .filter((e) => e.name?.trim())
-            .map((e) => ({ code: e.name.trim(), description: e.description ?? '' })),
+            .map((e) => ({ code: e.name.trim(), description: e.description ?? '' }))
+            .sort((a, b) => a.code.localeCompare(b.code)),
         };
 
         irEndpoints.push(irEp);
       }
 
       if (irEndpoints.length > 0) {
+        irEndpoints.sort((a, b) => a.name.localeCompare(b.name));
         irModules.push({ name: moduleName, moduleId: mod.module_id, endpoints: irEndpoints });
       }
     }
+
+    irModules.sort((a, b) => a.name.localeCompare(b.name));
 
     const enumsDef = config.mappings?.enums;
     const constants: Array<{
@@ -268,16 +275,18 @@ export const shopeeSource: SourceAdapter = {
         for (const [value, name] of Object.entries(def.values)) {
           values.push({ name, value });
         }
+        values.sort((a, b) => a.name.localeCompare(b.name));
         constants.push({ typeName, baseType: def.base, values });
       }
+      constants.sort((a, b) => a.typeName.localeCompare(b.typeName));
     }
 
     return {
       name: config.name,
       modules: irModules,
       constants,
-      errors: Array.from(allErrors.values()),
-      fixtures,
+      errors: Array.from(allErrors.values()).sort((a, b) => a.code.localeCompare(b.code)),
+      fixtures: fixtures.sort((a, b) => a.filename.localeCompare(b.filename)),
     };
   },
 };
