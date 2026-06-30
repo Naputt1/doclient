@@ -437,19 +437,17 @@ type ${moduleName}ServiceOp[T any] struct {
 `;
     const gm = goClientMethod(ep.method);
     if (ep.isUpload) {
-      const makeMethod =
-        ep.apiType === 'Shop' ? `s.client.WithShop(sid, tok)` : `s.client.WithMerchant(sid, tok)`;
       out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, filename string, tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
-	err := ${makeMethod}.Upload(ctx, path, "image", filename, resp)
+	err := s.client.Upload(ctx, path, "image", filename, resp, sid, tok)
 	return resp, err
 }
 
 func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context, sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
-	err := ${makeMethod}.UploadFromReader(ctx, path, "image", filename, reader, resp)
+	err := s.client.UploadFromReader(ctx, path, "image", filename, reader, resp, sid, tok)
 	return resp, err
 }
 
@@ -457,19 +455,10 @@ func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context, si
     } else {
       const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
       const hasReq = reqType && structGen.getAllStructs().some((s) => s.name === reqType);
-      const methodCall = (() => {
-        const withAuth =
-          ep.apiType === 'Shop'
-            ? `s.client.WithShop(sid, tok)`
-            : ep.apiType === 'Merchant'
-              ? `s.client.WithMerchant(sid, tok)`
-              : `s.client`;
-        const args =
-          ep.method === 'GET'
-            ? `${gm}(ctx, path, resp, ${hasReq ? 'opt' : 'nil'})`
-            : `${gm}(ctx, path, ${hasReq ? 'req' : 'nil'}, resp)`;
-        return `${withAuth}.${args}`;
-      })();
+      const methodCall =
+        ep.method === 'GET'
+          ? `s.client.${gm}(ctx, path, resp, ${hasReq ? 'opt' : 'nil'}, sid, tok)`
+          : `s.client.${gm}(ctx, path, ${hasReq ? 'req' : 'nil'}, resp, sid, tok)`;
       out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
@@ -718,7 +707,7 @@ func (s *AuthServiceOp[T]) GetAccessToken(ctx context.Context, sid uint64, aid u
 		params["main_account_id"] = aid
 	}
 	resp := new(AccessTokenResponse)
-	err := s.client.Post(ctx, path, params, resp)
+	err := s.client.Post(ctx, path, params, resp, 0, "")
 	return resp, err
 }
 
@@ -734,7 +723,7 @@ func (s *AuthServiceOp[T]) RefreshAccessToken(ctx context.Context, sid uint64, a
 		params["main_account_id"] = aid
 	}
 	resp := new(RefreshAccessTokenResponse)
-	err := s.client.Post(ctx, path, params, resp)
+	err := s.client.Post(ctx, path, params, resp, 0, "")
 	return resp, err
 }
 `;
