@@ -328,8 +328,8 @@ func (c *Client[T]) doGetHeaders(req *http.Request, v interface{}, skipBody bool
 			if shopeeErr == "error_invalid_access_token" || shopeeErr == "error_access_token_expired" || shopeeErr == "invalid_access_token" || shopeeErr == "invalid_acceess_token" {
 				refreshRes, err := c.Auth.RefreshAccessToken(c.ShopID, c.MerchantID, c.RefreshToken)
 				if err == nil {
-					c.AccessToken = refreshRes.Response.AccessToken
-					c.RefreshToken = refreshRes.Response.RefreshToken
+					c.AccessToken = refreshRes.AccessToken
+					c.RefreshToken = refreshRes.RefreshToken
 					if c.OnTokenRefresh != nil {
 						c.OnTokenRefresh(refreshRes, c.Meta)
 					}

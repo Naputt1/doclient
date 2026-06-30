@@ -623,89 +623,103 @@ function renderAuthFile(packageName: string): string {
   return `package ${packageName}
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"net/url"
+	"time"
 )
 
 type AuthService interface {
-	GetAuthURL(redirectURL string) (string, error)
-	GetAccessToken(shopID uint64, code string, partnerID int, partnerKey string) (*GetAccessTokenResponse, error)
-	RefreshAccessToken(shopID uint64, merchantID uint64, refreshToken string) (*RefreshAccessTokenResponse, error)
+	// GetAuthURL returns the URL to authorize the app.
+	// Path: /api/v2/shop/auth_partner
+	GetAuthURL() (string, error)
+
+	// GetCancelAuthURL returns the URL to cancel the authorization.
+	// Path: /api/v2/shop/cancel_auth_partner
+	GetCancelAuthURL() (string, error)
+
+	// GetAccessToken gets the access token.
+	// Path: /api/v2/auth/token/get
+	GetAccessToken(sid uint64, aid uint64, code string) (*AccessTokenResponse, error)
+
+	// RefreshAccessToken refreshes the access token.
+	// Path: /api/v2/auth/access_token/get
+	RefreshAccessToken(sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error)
+}
+
+type AccessTokenResponse struct {
+	BaseResponse
+
+	AccessToken    string   \`json:"access_token"\`
+	RefreshToken   string   \`json:"refresh_token"\`
+	ExpireIn       int      \`json:"expire_in"\`
+	MerchantIDList []uint64 \`json:"merchant_id_list,omitempty"\`
+	ShopIDList     []uint64 \`json:"shop_id_list,omitempty"\`
+}
+
+type RefreshAccessTokenResponse struct {
+	BaseResponse
+
+	AccessToken  string \`json:"access_token"\`
+	RefreshToken string \`json:"refresh_token"\`
+	ExpireIn     int    \`json:"expire_in"\`
+	PartnerID    uint64 \`json:"partner_id"\`
+	MerchantID   uint64 \`json:"merchant_id"\`
+	ShopID       uint64 \`json:"shop_id"\`
 }
 
 type AuthServiceOp[T any] struct {
 	client *Client[T]
 }
 
-type GetAccessTokenRequest struct {
-	Code      string \`json:"code"\`
-	PartnerID int    \`json:"partner_id"\`
-	ShopID    uint64 \`json:"shop_id"\`
+func (s *AuthServiceOp[T]) GetAuthURL() (string, error) {
+	return s.authURL("/api/v2/shop/auth_partner")
 }
 
-type GetAccessTokenResponse struct {
-	BaseResponse   \`json:",inline"\`
-	Response       GetAccessTokenResponseData \`json:"response"\`
+func (s *AuthServiceOp[T]) GetCancelAuthURL() (string, error) {
+	return s.authURL("/api/v2/shop/cancel_auth_partner")
 }
 
-type GetAccessTokenResponseData struct {
-	AccessToken  string \`json:"access_token"\`
-	RefreshToken string \`json:"refresh_token"\`
-	ExpiresIn    int64  \`json:"expires_in"\`
-	ShopID       uint64 \`json:"shop_id"\`
-	MerchantID   uint64 \`json:"merchant_id"\`
+func (s *AuthServiceOp[T]) authURL(path string) (string, error) {
+	rurl := s.client.app.RedirectURL
+	ts := time.Now().Unix()
+	baseStr := fmt.Sprintf("%d%s%d", s.client.app.PartnerID, path, ts)
+	h := hmac.New(sha256.New, []byte(s.client.app.PartnerKey))
+	h.Write([]byte(baseStr))
+	sign := hex.EncodeToString(h.Sum(nil))
+	return fmt.Sprintf("%s%s?partner_id=%d&timestamp=%d&sign=%s&redirect=%s", s.client.app.APIURL, path, s.client.app.PartnerID, ts, sign, rurl), nil
 }
 
-type RefreshAccessTokenRequest struct {
-	RefreshToken string \`json:"refresh_token"\`
-	PartnerID    int    \`json:"partner_id"\`
-	ShopID       uint64 \`json:"shop_id"\`
-	MerchantID   uint64 \`json:"merchant_id"\`
-}
-
-type RefreshAccessTokenResponse struct {
-	BaseResponse       \`json:",inline"\`
-	Response           RefreshAccessTokenResponseData \`json:"response"\`
-}
-
-type RefreshAccessTokenResponseData struct {
-	AccessToken  string \`json:"access_token"\`
-	RefreshToken string \`json:"refresh_token"\`
-	ExpiresIn    int64  \`json:"expires_in"\`
-	ShopID       uint64 \`json:"shop_id"\`
-	MerchantID   uint64 \`json:"merchant_id"\`
-}
-
-func (s *AuthServiceOp[T]) GetAuthURL(redirectURL string) (string, error) {
-	params := url.Values{}
-	params.Set("partner_id", fmt.Sprintf("%d", s.client.app.PartnerID))
-	params.Set("redirect", redirectURL)
-	return s.client.app.APIURL + "/api/v2/auth/token/get?" + params.Encode(), nil
-}
-
-func (s *AuthServiceOp[T]) GetAccessToken(shopID uint64, code string, partnerID int, partnerKey string) (*GetAccessTokenResponse, error) {
-	req := &GetAccessTokenRequest{
-		Code:      code,
-		PartnerID: partnerID,
-		ShopID:    shopID,
-	}
+func (s *AuthServiceOp[T]) GetAccessToken(sid uint64, aid uint64, code string) (*AccessTokenResponse, error) {
 	path := "/auth/token/get"
-	resp := new(GetAccessTokenResponse)
-	err := s.client.WithToken("").Post(path, req, resp)
+	params := map[string]interface{}{
+		"code":       code,
+		"partner_id": s.client.app.PartnerID,
+	}
+	if sid != 0 {
+		params["shop_id"] = sid
+	} else if aid != 0 {
+		params["main_account_id"] = aid
+	}
+	resp := new(AccessTokenResponse)
+	err := s.client.Post(path, params, resp)
 	return resp, err
 }
 
-func (s *AuthServiceOp[T]) RefreshAccessToken(shopID uint64, merchantID uint64, refreshToken string) (*RefreshAccessTokenResponse, error) {
-	req := &RefreshAccessTokenRequest{
-		RefreshToken: refreshToken,
-		PartnerID:    s.client.app.PartnerID,
-		ShopID:       shopID,
-		MerchantID:   merchantID,
-	}
+func (s *AuthServiceOp[T]) RefreshAccessToken(sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error) {
 	path := "/auth/access_token/get"
+	params := map[string]interface{}{
+		"refresh_token": refresh,
+		"partner_id":    s.client.app.PartnerID,
+	}
+	if sid != 0 {
+		params["shop_id"] = sid
+	} else if aid != 0 {
+		params["main_account_id"] = aid
+	}
 	resp := new(RefreshAccessTokenResponse)
-	// Public API needs no shop/token in signature, but needs partner_id
-	err := s.client.WithToken("").Post(path, req, resp)
+	err := s.client.Post(path, params, resp)
 	return resp, err
 }
 `;
