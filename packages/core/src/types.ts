@@ -62,6 +62,7 @@ export interface Config {
   source: SourceAdapter;
   output: Renderer;
   outputDir?: string;
+  cacheDir?: string;
   mappings?: MappingsConfig;
 }
 

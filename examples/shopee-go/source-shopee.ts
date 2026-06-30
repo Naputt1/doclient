@@ -7,7 +7,7 @@ import type {
   IRParam,
   SourceAdapter,
 } from '@doclient/core';
-import { getModuleDisplayName, toPascalCase } from '@doclient/core';
+import { getModuleDisplayName, toPascalCase, createCachedFetcher } from '@doclient/core';
 
 const BASE = 'https://open.shopee.com/opservice/api/v1/doc';
 
@@ -150,17 +150,33 @@ function isCommonParam(name: string): boolean {
   );
 }
 
-async function fetchModules(): Promise<ShopeeModule[]> {
-  const res = await fetch(`${BASE}/module/?version=2`);
-  if (!res.ok) throw new Error(`Failed to fetch modules: ${res.status}`);
-  const body: { modules: ShopeeModule[] } = await res.json();
+function createFetcher(config: Config) {
+  if (config.cacheDir) {
+    return createCachedFetcher(config.cacheDir).fetchJSON;
+  }
+  return async <T = unknown>(url: string): Promise<T> => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`fetch failed: ${url} (${res.status})`);
+    return res.json() as Promise<T>;
+  };
+}
+
+async function fetchModules(fetchJSON: <T>(url: string) => Promise<T>): Promise<ShopeeModule[]> {
+  const body = await fetchJSON<{ modules: ShopeeModule[] }>(`${BASE}/module/?version=2`);
   return body.modules ?? [];
 }
 
-async function fetchAPIInfo(apiName: string): Promise<ShopeeAPIInfo | null> {
-  const res = await fetch(`${BASE}/api/?version=2&api_name=${encodeURIComponent(apiName)}`);
-  if (!res.ok) return null;
-  return res.json();
+async function fetchAPIInfo(
+  fetchJSON: <T>(url: string) => Promise<T>,
+  apiName: string,
+): Promise<ShopeeAPIInfo | null> {
+  try {
+    return await fetchJSON<ShopeeAPIInfo>(
+      `${BASE}/api/?version=2&api_name=${encodeURIComponent(apiName)}`,
+    );
+  } catch {
+    return null;
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -172,8 +188,9 @@ export const shopeeSource: SourceAdapter = {
 
   async execute(config: Config): Promise<IR> {
     const typeOverrides = config.mappings?.typeOverrides;
+    const fetchJSON = createFetcher(config);
 
-    const modules = await fetchModules();
+    const modules = await fetchModules(fetchJSON);
     const irModules: IRModule[] = [];
     const allErrors = new Map<string, IRError>();
     const fixtures: Array<{ filename: string; content: string }> = [];
@@ -190,7 +207,7 @@ export const shopeeSource: SourceAdapter = {
 
         await sleep(15);
 
-        const info = await fetchAPIInfo(name);
+        const info = await fetchAPIInfo(fetchJSON, name);
         if (!info) continue;
 
         let requestParams: ShopeeParam[] = [];

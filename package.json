@@ -11,6 +11,7 @@
     "format": "prettier --check packages/ examples/",
     "format:fix": "prettier --write packages/ examples/",
     "check": "turbo run build && pnpm lint && pnpm format && pnpm typecheck",
+    "generate": "tsx packages/cli/src/cli.ts",
     "test": "vitest run"
   },
   "devDependencies": {

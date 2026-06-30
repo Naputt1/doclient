@@ -7,11 +7,14 @@ import { runPipeline } from '@doclient/core';
 export async function main(): Promise<void> {
   const args = argv.slice(2);
   let configPath = '';
+  let cache = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--config' || args[i] === '-c') {
       configPath = args[i + 1];
       i++;
+    } else if (args[i] === '--cache') {
+      cache = true;
     } else if (args[i] === '--help' || args[i] === '-h') {
       console.log(`doclient - API doc scraper -> typed SDK generator
 
@@ -21,6 +24,7 @@ Usage:
 Options:
   -c, --config   Path to config file (required)
   --out-dir      Output directory (overrides config.outputDir)
+  --cache        Cache API responses in .doclient-cache under output dir
   -h, --help     Show this help
 `);
       exit(0);
@@ -36,10 +40,14 @@ Options:
 
   const config: Config = await loadConfig(absConfigPath);
 
+  const outDir = resolve(cwd(), config.outputDir ?? '.');
+
+  if (cache) {
+    config.cacheDir = join(outDir, '.doclient-cache');
+  }
+
   console.log(`Running doclient for: ${config.name}`);
   const files = await runPipeline(config);
-
-  const outDir = resolve(cwd(), config.outputDir ?? '.');
 
   for (const file of files) {
     const fullPath = join(outDir, file.path);

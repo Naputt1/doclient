@@ -23,3 +23,5 @@ export {
   getModuleDisplayName,
   toPascalCase,
 } from './pipeline.js';
+
+export { createCachedFetcher } from './cache.js';
