@@ -391,12 +391,16 @@ function renderServiceFile(
 
   let out = `package ${packageName}
 
+import (
+	"context"
 `;
   if (hasUpload) {
-    out += `import "io"
-
+    out += `	"io"
 `;
   }
+  out += `)
+
+`;
 
   out += `type ${moduleName}Service interface {
 `;
@@ -408,13 +412,13 @@ function renderServiceFile(
 \t// ${ep.docUrl}
 `;
     if (ep.isUpload) {
-      out += `\t${ep.name}(sid uint64, filename string, tok string) (*${respType}, error)
-\t${ep.name}FromReader(sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error)
+      out += `\t${ep.name}(ctx context.Context, sid uint64, filename string, tok string) (*${respType}, error)
+\t${ep.name}FromReader(ctx context.Context, sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error)
 `;
     } else {
       const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
       const hasReq = reqType && structGen.getAllStructs().some((s) => s.name === reqType);
-      out += `\t${ep.name}(sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error)
+      out += `\t${ep.name}(ctx context.Context, sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error)
 `;
     }
   }
@@ -435,17 +439,17 @@ type ${moduleName}ServiceOp[T any] struct {
     if (ep.isUpload) {
       const makeMethod =
         ep.apiType === 'Shop' ? `s.client.WithShop(sid, tok)` : `s.client.WithMerchant(sid, tok)`;
-      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(sid uint64, filename string, tok string) (*${respType}, error) {
+      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, filename string, tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
-	err := ${makeMethod}.Upload(path, "image", filename, resp)
+	err := ${makeMethod}.Upload(ctx, path, "image", filename, resp)
 	return resp, err
 }
 
-func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error) {
+func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context, sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
-	err := ${makeMethod}.UploadFromReader(path, "image", filename, reader, resp)
+	err := ${makeMethod}.UploadFromReader(ctx, path, "image", filename, reader, resp)
 	return resp, err
 }
 
@@ -462,11 +466,11 @@ func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(sid uint64, filename st
               : `s.client`;
         const args =
           ep.method === 'GET'
-            ? `${gm}(path, resp, ${hasReq ? 'opt' : 'nil'})`
-            : `${gm}(path, ${hasReq ? 'req' : 'nil'}, resp)`;
+            ? `${gm}(ctx, path, resp, ${hasReq ? 'opt' : 'nil'})`
+            : `${gm}(ctx, path, ${hasReq ? 'req' : 'nil'}, resp)`;
         return `${withAuth}.${args}`;
       })();
-      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error) {
+      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error) {
 	path := "/${ep.path}"
 	resp := new(${respType})
 	err := ${methodCall}
@@ -519,6 +523,7 @@ function renderTestFile(
   let out = `package ${packageName}
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -545,7 +550,8 @@ import (
 
 `;
     if (ep.isUpload) {
-      out += `\tres, err := client.${moduleName}.${ep.name}(shopID, "fixtures/test.jpg", accessToken)
+      out += `\tctx := context.Background()
+\tres, err := client.${moduleName}.${ep.name}(ctx, shopID, "fixtures/test.jpg", accessToken)
 `;
     } else {
       const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
@@ -556,7 +562,8 @@ import (
         out += `\tvar req ${reqType}
 `;
       }
-      out += `\tres, err := client.${moduleName}.${ep.name}(shopID, ${hasReq ? 'req, ' : ''}accessToken)
+      out += `\tctx := context.Background()
+\tres, err := client.${moduleName}.${ep.name}(ctx, shopID, ${hasReq ? 'req, ' : ''}accessToken)
 `;
     }
     out += `\tif err != nil {
@@ -630,6 +637,7 @@ function renderAuthFile(packageName: string): string {
   return `package ${packageName}
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -648,11 +656,11 @@ type AuthService interface {
 
 	// GetAccessToken gets the access token.
 	// Path: /api/v2/auth/token/get
-	GetAccessToken(sid uint64, aid uint64, code string) (*AccessTokenResponse, error)
+	GetAccessToken(ctx context.Context, sid uint64, aid uint64, code string) (*AccessTokenResponse, error)
 
 	// RefreshAccessToken refreshes the access token.
 	// Path: /api/v2/auth/access_token/get
-	RefreshAccessToken(sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error)
+	RefreshAccessToken(ctx context.Context, sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error)
 }
 
 type AccessTokenResponse struct {
@@ -698,7 +706,7 @@ func (s *AuthServiceOp[T]) authURL(path string) (string, error) {
 	return fmt.Sprintf("%s%s?partner_id=%d&timestamp=%d&sign=%s&redirect=%s", s.client.app.APIURL, path, s.client.app.PartnerID, ts, sign, rurl), nil
 }
 
-func (s *AuthServiceOp[T]) GetAccessToken(sid uint64, aid uint64, code string) (*AccessTokenResponse, error) {
+func (s *AuthServiceOp[T]) GetAccessToken(ctx context.Context, sid uint64, aid uint64, code string) (*AccessTokenResponse, error) {
 	path := "/auth/token/get"
 	params := map[string]interface{}{
 		"code":       code,
@@ -710,11 +718,11 @@ func (s *AuthServiceOp[T]) GetAccessToken(sid uint64, aid uint64, code string) (
 		params["main_account_id"] = aid
 	}
 	resp := new(AccessTokenResponse)
-	err := s.client.Post(path, params, resp)
+	err := s.client.Post(ctx, path, params, resp)
 	return resp, err
 }
 
-func (s *AuthServiceOp[T]) RefreshAccessToken(sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error) {
+func (s *AuthServiceOp[T]) RefreshAccessToken(ctx context.Context, sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error) {
 	path := "/auth/access_token/get"
 	params := map[string]interface{}{
 		"refresh_token": refresh,
@@ -726,7 +734,7 @@ func (s *AuthServiceOp[T]) RefreshAccessToken(sid uint64, aid uint64, refresh st
 		params["main_account_id"] = aid
 	}
 	resp := new(RefreshAccessTokenResponse)
-	err := s.client.Post(path, params, resp)
+	err := s.client.Post(ctx, path, params, resp)
 	return resp, err
 }
 `;
