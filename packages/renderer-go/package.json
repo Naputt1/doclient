@@ -1,7 +1,6 @@
 {
   "name": "@doclient/renderer-go",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,6 +9,17 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Naputt1/doclient.git",
+    "directory": "packages/renderer-go"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsup",

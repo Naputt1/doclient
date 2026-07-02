@@ -12,9 +12,12 @@
     "format:fix": "prettier --write packages/ examples/",
     "check": "turbo run build && pnpm lint && pnpm format && pnpm typecheck",
     "generate": "tsx packages/cli/src/cli.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "changeset": "changeset",
+    "version-packages": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.0.1",
     "eslint": "^10.6.0",

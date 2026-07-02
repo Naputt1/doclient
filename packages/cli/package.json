@@ -1,7 +1,6 @@
 {
   "name": "@doclient/cli",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,6 +12,18 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Naputt1/doclient.git",
+    "directory": "packages/cli"
+  },
+  "files": [
+    "dist",
+    "bin.mjs"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsup",
