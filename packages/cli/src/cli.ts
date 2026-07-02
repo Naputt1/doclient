@@ -5,6 +5,33 @@ import { spawn } from 'node:child_process';
 import type { Config } from '@doclient/core';
 import { runPipeline } from '@doclient/core';
 
+// Re-exported for convenience — import { defineConfig } from '@doclient/cli'
+export {
+  defineConfig,
+  defineRenderer,
+  runPipeline,
+  createCachedFetcher,
+  filterByStaticModules,
+  getModuleDisplayName,
+  toPascalCase,
+} from '@doclient/core';
+export type {
+  IR,
+  IRModule,
+  IREndpoint,
+  IRParam,
+  IRConstant,
+  IRConstantValue,
+  IRError,
+  IRFixture,
+  Config,
+  MappingsConfig,
+  EnumDef,
+  SourceAdapter,
+  Renderer,
+  FileOutput,
+} from '@doclient/core';
+
 export async function main(): Promise<void> {
   const args = argv.slice(2);
   let configPath = '';
