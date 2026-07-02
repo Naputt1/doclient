@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { argv, cwd, exit } from 'node:process';
 import { spawn } from 'node:child_process';
@@ -20,10 +20,10 @@ export async function main(): Promise<void> {
       console.log(`doclient - API doc scraper -> typed SDK generator
 
 Usage:
-  doclient --config <config-file>
+  doclient [--config <config-file>]
 
 Options:
-  -c, --config   Path to config file (required)
+  -c, --config   Path to config file (defaults to doclient.config.ts)
   --out-dir      Output directory (overrides config.outputDir)
   --cache        Cache API responses in .doclient-cache under output dir
   -h, --help     Show this help
@@ -33,8 +33,17 @@ Options:
   }
 
   if (!configPath) {
-    console.error('Error: --config is required');
-    exit(1);
+    const candidates = ['doclient.config.ts', 'doclient.config.js', 'doclient.config.mjs'];
+    for (const candidate of candidates) {
+      if (existsSync(resolve(cwd(), candidate))) {
+        configPath = candidate;
+        break;
+      }
+    }
+    if (!configPath) {
+      console.error('Error: --config is required (or create doclient.config.ts)');
+      exit(1);
+    }
   }
 
   const absConfigPath = resolve(cwd(), configPath);
