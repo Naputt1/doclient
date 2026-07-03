@@ -80,7 +80,7 @@ export function defineConfig(config: CliConfig): Config {
   return coreDefineConfig(config as Config);
 }
 
-function parseArg(args: string[], name: string, short?: string): string | undefined {
+export function parseArg(args: string[], name: string, short?: string): string | undefined {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === `--${name}` || (short && args[i] === `-${short}`)) {
       return args[i + 1];
@@ -88,11 +88,11 @@ function parseArg(args: string[], name: string, short?: string): string | undefi
   }
 }
 
-export async function main(): Promise<void> {
-  const allArgs = argv.slice(2);
+export async function main(allArgs?: string[]): Promise<void> {
+  const args = allArgs ?? argv.slice(2);
 
-  if (allArgs[0] === 'scaffold') {
-    let profile = parseArg(allArgs, 'profile', 'p');
+  if (args[0] === 'scaffold') {
+    let profile = parseArg(args, 'profile', 'p');
     if (!profile) {
       const candidates = ['doclient.config.ts', 'doclient.config.js', 'doclient.config.mjs'];
       for (const candidate of candidates) {
@@ -110,13 +110,12 @@ export async function main(): Promise<void> {
     }
     await scaffoldCommand({
       profile,
-      dir: parseArg(allArgs, 'dir', 'd'),
-      module: parseArg(allArgs, 'module', 'm'),
+      dir: parseArg(args, 'dir', 'd'),
+      module: parseArg(args, 'module', 'm'),
     });
     return;
   }
 
-  const args = allArgs;
   let configPath = '';
   let cache = false;
 

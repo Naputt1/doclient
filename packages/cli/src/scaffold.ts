@@ -16,7 +16,10 @@ interface ScaffoldArgs {
   packageName?: string;
 }
 
-function findProfileExport(mod: Record<string, unknown>, profilePath: string): PlatformProfile {
+export function findProfileExport(
+  mod: Record<string, unknown>,
+  profilePath: string,
+): PlatformProfile {
   // Check if it's a config (has default.profile or default.source)
   const defaultExport = mod.default;
   if (defaultExport && typeof defaultExport === 'object' && defaultExport !== null) {
