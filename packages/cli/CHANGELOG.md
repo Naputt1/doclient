@@ -4,6 +4,7 @@
 
 ### Patch Changes
 
+- feat: refactor to use profile-based renderer (`defineProfile`, `loadTemplate`, `.go` template files, `doclient scaffold` command)
 - feat: re-export core API (defineConfig, IR types, etc.) from @doclient/cli
 - feat: auto-discover doclient.config.ts when --config is omitted
 - fix: include dist/ directory in published packages

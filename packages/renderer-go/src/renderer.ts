@@ -1,13 +1,16 @@
 import type { Config, IR, IREndpoint, IRParam, Renderer, FileOutput } from '@doclient/core';
-import { renderClientFile } from './client.js';
+import type { PlatformProfile } from './platform-profile.js';
 
-interface GoStruct {
+// Note: the client template (`renderClientFile`) is provided by each PlatformProfile,
+// not imported here. Profile examples live in profiles/shopee.ts and profiles/lazada.ts.
+
+export interface GoStruct {
   name: string;
   fields: GoField[];
   fileName: string;
 }
 
-interface GoField {
+export interface GoField {
   name: string;
   type: string;
   jsonTag: string;
@@ -15,23 +18,13 @@ interface GoField {
   comment: string;
 }
 
-interface ServiceInfo {
+export interface ServiceInfo {
   name: string;
   interfaceName: string;
   implName: string;
 }
 
-const staticServices: ServiceInfo[] = [
-  { name: 'Auth', interfaceName: 'AuthService', implName: 'AuthServiceOp' },
-];
-
-function isCommonParam(name: string): boolean {
-  return ['partner_id', 'shop_id', 'merchant_id', 'access_token', 'timestamp', 'sign'].includes(
-    name,
-  );
-}
-
-function toPascalCase(s: string): string {
+export function toPascalCase(s: string): string {
   return s
     .replace(/[-_.\s]+/g, '_')
     .split('_')
@@ -44,7 +37,7 @@ function toPascalCase(s: string): string {
     .join('');
 }
 
-function toSnakeCase(s: string, legacy?: boolean): string {
+export function toSnakeCase(s: string, legacy?: boolean): string {
   if (legacy) {
     return s
       .replace(/([A-Z])/g, '_$1')
@@ -60,25 +53,25 @@ function toSnakeCase(s: string, legacy?: boolean): string {
     .replace(/__+/g, '_');
 }
 
-function getFileName(moduleName: string, legacy?: boolean): string {
+export function getFileName(moduleName: string, legacy?: boolean): string {
   return toSnakeCase(moduleName, legacy);
 }
 
-function isParamRequired(req: boolean | string): boolean {
+export function isParamRequired(req: boolean | string): boolean {
   if (typeof req === 'boolean') return req;
   if (!req) return true;
   return req === 'yes' || req === 'true';
 }
 
-class StructGenerator {
+export class StructGenerator {
   private structSignatures = new Map<string, string>();
-  private allStructs = new Map<string, GoStruct>();
+  allStructs = new Map<string, GoStruct>();
   private nameToSignature = new Map<string, string>();
-  private chainToName = new Map<string, string>();
-  private typeOverrides: Record<string, string>;
-  private structTypeOverrides: Record<string, Record<string, string>>;
-  private packageName: string;
-  private legacySnakeCase: boolean;
+  chainToName = new Map<string, string>();
+  typeOverrides: Record<string, string>;
+  structTypeOverrides: Record<string, Record<string, string>>;
+  packageName: string;
+  legacySnakeCase: boolean;
 
   constructor(
     packageName: string,
@@ -97,79 +90,17 @@ class StructGenerator {
     return this.chainToName.get(key) ?? chain.map(toPascalCase).join('');
   }
 
-  generateForEndpoint(
-    moduleName: string,
-    ep: IREndpoint,
-  ): { requestStruct: GoStruct | null; responseStruct: GoStruct } {
-    const fileName = getFileName(moduleName, this.legacySnakeCase);
+  generateResponseDataWith(
+    responseFieldName: string,
+    chain: string[],
+    responseParams: IRParam[],
+    fileName: string,
+  ): GoStruct | null {
+    const responseParam = responseParams.find((p) => p.name === responseFieldName);
+    if (!responseParam || !responseParam.children || responseParam.children.length === 0)
+      return null;
 
-    const reqStruct =
-      ep.requestParams.length > 0
-        ? this.generateStruct(
-            [moduleName, ep.name, 'Request'],
-            ep.requestParams,
-            ep.method === 'GET',
-            true,
-            fileName,
-          )
-        : null;
-
-    const respDataChain = [moduleName, ep.name, 'ResponseData'];
-    const respDataStruct = this.generateResponseData(respDataChain, ep.responseParams, fileName);
-
-    const mainResp: GoStruct = {
-      name: moduleName + ep.name + 'Response',
-      fields: [
-        {
-          name: '',
-          type: 'BaseResponse',
-          jsonTag: ',inline',
-          urlTag: '',
-          comment: 'Common response fields',
-        },
-      ],
-      fileName,
-    };
-
-    for (const p of ep.responseParams) {
-      if (['request_id', 'error', 'message', 'warning'].includes(p.name)) continue;
-
-      if (p.name === 'response') {
-        if (respDataStruct) {
-          mainResp.fields.push({
-            name: 'Response',
-            type: respDataStruct.name,
-            jsonTag: 'response',
-            urlTag: '',
-            comment: p.description ?? 'Actual response data',
-          });
-        } else {
-          mainResp.fields.push({
-            name: 'Response',
-            type: 'interface{}',
-            jsonTag: 'response',
-            urlTag: '',
-            comment: 'Actual response data',
-          });
-        }
-      } else {
-        const field = this.paramToField(p, respDataChain, false, fileName);
-        if (field) {
-          field.jsonTag += ',omitempty';
-          mainResp.fields.push(field);
-        }
-      }
-    }
-
-    const sig = this.getSignature(mainResp);
-    mainResp.name = this.pickName(sig, [moduleName, ep.name, 'Response']);
-    this.allStructs.set(mainResp.name, mainResp);
-    this.chainToName.set([moduleName, ep.name, 'Response'].join('.'), mainResp.name);
-
-    return {
-      requestStruct: reqStruct,
-      responseStruct: mainResp,
-    };
+    return this.generateStruct(chain, responseParam.children, false, false, fileName);
   }
 
   resolveTypeName(moduleName: string, ...chain: string[]): string {
@@ -181,29 +112,18 @@ class StructGenerator {
     return parts.join('');
   }
 
-  private generateResponseData(
-    chain: string[],
-    responseParams: IRParam[],
-    fileName: string,
-  ): GoStruct | null {
-    const responseParam = responseParams.find((p) => p.name === 'response');
-    if (!responseParam || !responseParam.children || responseParam.children.length === 0)
-      return null;
-
-    return this.generateStruct(chain, responseParam.children, false, false, fileName);
-  }
-
-  private generateStruct(
+  generateStruct(
     chain: string[],
     params: IRParam[],
     isGet: boolean,
     isRequest: boolean,
     fileName: string,
+    skipParam?: (name: string) => boolean,
   ): GoStruct | null {
     const fields: GoField[] = [];
 
     for (const p of params) {
-      if (isRequest && isCommonParam(p.name)) continue;
+      if (skipParam && skipParam(p.name)) continue;
 
       const fieldName = toPascalCase(p.name);
       let goType = this.mapType(p, chain, isRequest, fileName);
@@ -244,7 +164,7 @@ class StructGenerator {
     return s;
   }
 
-  private mapType(p: IRParam, chain: string[], isRequest: boolean, fileName: string): string {
+  mapType(p: IRParam, chain: string[], isRequest: boolean, fileName: string): string {
     const fieldName = p.name;
 
     if (chain.length > 0) {
@@ -302,12 +222,7 @@ class StructGenerator {
     }
   }
 
-  private paramToField(
-    p: IRParam,
-    chain: string[],
-    isRequest: boolean,
-    fileName: string,
-  ): GoField | null {
+  paramToField(p: IRParam, chain: string[], isRequest: boolean, fileName: string): GoField | null {
     const fieldName = toPascalCase(p.name);
     const goType = this.mapType(p, chain, isRequest, fileName);
     if (!goType) return null;
@@ -320,7 +235,7 @@ class StructGenerator {
     };
   }
 
-  private getSignature(s: GoStruct): string {
+  getSignature(s: GoStruct): string {
     const parts: string[] = [];
     for (const f of s.fields) {
       const cleanType = f.type.replace(/^\*/, '');
@@ -333,11 +248,11 @@ class StructGenerator {
 
   private reservedNames = new Set(['Option']);
 
-  private isReserved(name: string): boolean {
+  isReserved(name: string): boolean {
     return this.reservedNames.has(name);
   }
 
-  private pickName(signature: string, chain: string[]): string {
+  pickName(signature: string, chain: string[]): string {
     const last = chain.length > 0 ? chain[chain.length - 1] : '';
     const isTopLevel =
       last.endsWith('Request') || last.endsWith('Response') || last.endsWith('ResponseData');
@@ -379,100 +294,12 @@ class StructGenerator {
   }
 }
 
-function renderServiceFile(
-  moduleName: string,
-  fileName: string,
-  endpoints: IREndpoint[],
-  structGen: StructGenerator,
-  packageName: string,
-): string {
-  const hasUpload = endpoints.some((e) => e.isUpload);
-  const sortedEps = [...endpoints].sort((a, b) => a.name.localeCompare(b.name));
-
-  let out = `package ${packageName}
-
-import (
-	"context"
-`;
-  if (hasUpload) {
-    out += `	"io"
-`;
-  }
-  out += `)
-
-`;
-
-  out += `type ${moduleName}Service interface {
-`;
-  for (const ep of sortedEps) {
-    const comment = ep.description.replace(/\n/g, '\n\t// ');
-    const respType = structGen.getNameForChain(moduleName, ep.name, 'Response');
-    out += `\t// ${ep.name} ${comment}
-\t// Path: ${ep.fullPath}
-\t// ${ep.docUrl}
-`;
-    if (ep.isUpload) {
-      out += `\t${ep.name}(ctx context.Context, sid uint64, filename string, tok string) (*${respType}, error)
-\t${ep.name}FromReader(ctx context.Context, sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error)
-`;
-    } else {
-      const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
-      const hasReq = reqType && structGen.getAllStructs().some((s) => s.name === reqType);
-      out += `\t${ep.name}(ctx context.Context, sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error)
-`;
-    }
-  }
-  out += `}
-
-type ${moduleName}ServiceOp[T any] struct {
-	client *Client[T]
+export function goClientMethod(httpMethod: string): string {
+  const m: Record<string, string> = { GET: 'Get', POST: 'Post', PUT: 'Put', DELETE: 'Delete' };
+  return m[httpMethod] ?? httpMethod;
 }
 
-`;
-  for (const ep of sortedEps) {
-    const respType = structGen.getNameForChain(moduleName, ep.name, 'Response');
-    out += `// ${ep.name} ${ep.description.replace(/\n/g, '\n// ')}
-// Path: ${ep.fullPath}
-// ${ep.docUrl}
-`;
-    const gm = goClientMethod(ep.method);
-    if (ep.isUpload) {
-      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, filename string, tok string) (*${respType}, error) {
-	path := "/${ep.path}"
-	resp := new(${respType})
-	err := s.client.Upload(ctx, path, "image", filename, resp, sid, tok)
-	return resp, err
-}
-
-func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context, sid uint64, filename string, reader io.Reader, tok string) (*${respType}, error) {
-	path := "/${ep.path}"
-	resp := new(${respType})
-	err := s.client.UploadFromReader(ctx, path, "image", filename, reader, resp, sid, tok)
-	return resp, err
-}
-
-`;
-    } else {
-      const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
-      const hasReq = reqType && structGen.getAllStructs().some((s) => s.name === reqType);
-      const methodCall =
-        ep.method === 'GET'
-          ? `s.client.${gm}(ctx, path, resp, ${hasReq ? 'opt' : 'nil'}, sid, tok)`
-          : `s.client.${gm}(ctx, path, ${hasReq ? 'req' : 'nil'}, resp, sid, tok)`;
-      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context, sid uint64, ${hasReq ? (ep.method === 'GET' ? 'opt ' : 'req ') + reqType + ', ' : ''}tok string) (*${respType}, error) {
-	path := "/${ep.path}"
-	resp := new(${respType})
-	err := ${methodCall}
-	return resp, err
-}
-`;
-    }
-  }
-
-  return out;
-}
-
-function renderTypesFile(structs: GoStruct[], packageName: string): string {
+export function renderTypesFile(structs: GoStruct[], packageName: string): string {
   if (structs.length === 0) return '';
 
   const sorted = [...structs].sort((a, b) => a.name.localeCompare(b.name));
@@ -501,72 +328,7 @@ function renderTypesFile(structs: GoStruct[], packageName: string): string {
   return out;
 }
 
-function renderTestFile(
-  moduleName: string,
-  endpoints: IREndpoint[],
-  structGen: StructGenerator,
-  packageName: string,
-): string {
-  const sortedEps = [...endpoints].sort((a, b) => a.name.localeCompare(b.name));
-
-  let out = `package ${packageName}
-
-import (
-	"context"
-	"fmt"
-	"testing"
-
-	"github.com/jarcoal/httpmock"
-)
-
-`;
-  for (const ep of sortedEps) {
-    out += `func Test_${moduleName}_${ep.name}(t *testing.T) {
-	setup()
-	defer teardown()
-
-	fixture := "${ep.fullApiName}_resp.json"
-	data, err := loadFixtureSafe(fixture)
-	if err != nil {
-		t.Skipf("Skipping ${ep.name} due to missing fixture: %v", err)
-	}
-	responder, err := httpmock.NewJsonResponder(200, data)
-	if err != nil {
-		t.Skipf("Skipping ${ep.name} due to invalid fixture: %v", err)
-	}
-
-	httpmock.RegisterResponder("${ep.method}", fmt.Sprintf("%s/api/v2/${ep.path}", app.APIURL), responder)
-
-`;
-    if (ep.isUpload) {
-      out += `\tctx := context.Background()
-\tres, err := client.${moduleName}.${ep.name}(ctx, shopID, "fixtures/test.jpg", accessToken)
-`;
-    } else {
-      const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
-      const hasReq =
-        reqType !== moduleName + ep.name + 'Request' ||
-        structGen.getAllStructs().some((s) => s.name === reqType);
-      if (hasReq) {
-        out += `\tvar req ${reqType}
-`;
-      }
-      out += `\tctx := context.Background()
-\tres, err := client.${moduleName}.${ep.name}(ctx, shopID, ${hasReq ? 'req, ' : ''}accessToken)
-`;
-    }
-    out += `\tif err != nil {
-		t.Logf("${moduleName}.${ep.name} returned error (possibly expected with mock data): %s", err)
-	}
-
-	t.Logf("${moduleName}.${ep.name} response: %#v", res)
-}
-`;
-  }
-  return out;
-}
-
-function renderErrorsFile(
+export function renderErrorsFile(
   errors: Array<{ code: string; description: string }>,
   packageName: string,
 ): string {
@@ -587,7 +349,7 @@ const (
   return out;
 }
 
-function renderEnumsFile(
+export function renderEnumsFile(
   constants: Array<{
     typeName: string;
     baseType: string;
@@ -622,114 +384,7 @@ const (
   return out;
 }
 
-function renderAuthFile(packageName: string): string {
-  return `package ${packageName}
-
-import (
-	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"time"
-)
-
-type AuthService interface {
-	// GetAuthURL returns the URL to authorize the app.
-	// Path: /api/v2/shop/auth_partner
-	GetAuthURL() (string, error)
-
-	// GetCancelAuthURL returns the URL to cancel the authorization.
-	// Path: /api/v2/shop/cancel_auth_partner
-	GetCancelAuthURL() (string, error)
-
-	// GetAccessToken gets the access token.
-	// Path: /api/v2/auth/token/get
-	GetAccessToken(ctx context.Context, sid uint64, aid uint64, code string) (*AccessTokenResponse, error)
-
-	// RefreshAccessToken refreshes the access token.
-	// Path: /api/v2/auth/access_token/get
-	RefreshAccessToken(ctx context.Context, sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error)
-}
-
-type AccessTokenResponse struct {
-	BaseResponse
-
-	AccessToken    string   \`json:"access_token"\`
-	RefreshToken   string   \`json:"refresh_token"\`
-	ExpireIn       int      \`json:"expire_in"\`
-	MerchantIDList []uint64 \`json:"merchant_id_list,omitempty"\`
-	ShopIDList     []uint64 \`json:"shop_id_list,omitempty"\`
-}
-
-type RefreshAccessTokenResponse struct {
-	BaseResponse
-
-	AccessToken  string \`json:"access_token"\`
-	RefreshToken string \`json:"refresh_token"\`
-	ExpireIn     int    \`json:"expire_in"\`
-	PartnerID    uint64 \`json:"partner_id"\`
-	MerchantID   uint64 \`json:"merchant_id"\`
-	ShopID       uint64 \`json:"shop_id"\`
-}
-
-type AuthServiceOp[T any] struct {
-	client *Client[T]
-}
-
-func (s *AuthServiceOp[T]) GetAuthURL() (string, error) {
-	return s.authURL("/api/v2/shop/auth_partner")
-}
-
-func (s *AuthServiceOp[T]) GetCancelAuthURL() (string, error) {
-	return s.authURL("/api/v2/shop/cancel_auth_partner")
-}
-
-func (s *AuthServiceOp[T]) authURL(path string) (string, error) {
-	rurl := s.client.app.RedirectURL
-	ts := time.Now().Unix()
-	baseStr := fmt.Sprintf("%d%s%d", s.client.app.PartnerID, path, ts)
-	h := hmac.New(sha256.New, []byte(s.client.app.PartnerKey))
-	h.Write([]byte(baseStr))
-	sign := hex.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%s%s?partner_id=%d&timestamp=%d&sign=%s&redirect=%s", s.client.app.APIURL, path, s.client.app.PartnerID, ts, sign, rurl), nil
-}
-
-func (s *AuthServiceOp[T]) GetAccessToken(ctx context.Context, sid uint64, aid uint64, code string) (*AccessTokenResponse, error) {
-	path := "/auth/token/get"
-	params := map[string]interface{}{
-		"code":       code,
-		"partner_id": s.client.app.PartnerID,
-	}
-	if sid != 0 {
-		params["shop_id"] = sid
-	} else if aid != 0 {
-		params["main_account_id"] = aid
-	}
-	resp := new(AccessTokenResponse)
-	err := s.client.Post(ctx, path, params, resp, 0, "")
-	return resp, err
-}
-
-func (s *AuthServiceOp[T]) RefreshAccessToken(ctx context.Context, sid uint64, aid uint64, refresh string) (*RefreshAccessTokenResponse, error) {
-	path := "/auth/access_token/get"
-	params := map[string]interface{}{
-		"refresh_token": refresh,
-		"partner_id":    s.client.app.PartnerID,
-	}
-	if sid != 0 {
-		params["shop_id"] = sid
-	} else if aid != 0 {
-		params["main_account_id"] = aid
-	}
-	resp := new(RefreshAccessTokenResponse)
-	err := s.client.Post(ctx, path, params, resp, 0, "")
-	return resp, err
-}
-`;
-}
-
-function renderOptionsFile(packageName: string): string {
+export function renderOptionsFile(packageName: string): string {
   return `package ${packageName}
 
 import (
@@ -817,7 +472,7 @@ func WithMetaDefault(meta any) DefaultOption {
 `;
 }
 
-function renderLoggerFile(packageName: string): string {
+export function renderLoggerFile(packageName: string): string {
   return `package ${packageName}
 
 import (
@@ -867,105 +522,39 @@ func (l *LeveledLogger) Errorf(format string, v ...interface{}) {
 `;
 }
 
-function renderResponseFile(packageName: string): string {
-  return `package ${packageName}
-
-type BaseResponse struct {
-	Error     string \`json:"error"\`
-	Message   string \`json:"message"\`
-	RequestID string \`json:"request_id"\`
-	Warning   string \`json:"warning,omitempty"\`
-}
-`;
-}
-
-function goClientMethod(httpMethod: string): string {
-  const m: Record<string, string> = { GET: 'Get', POST: 'Post', PUT: 'Put', DELETE: 'Delete' };
-  return m[httpMethod] ?? httpMethod;
-}
-
-function renderTestSetupFile(packageName: string): string {
-  return `package ${packageName}
-
-import (
-	"encoding/json"
-	"io"
-	"os"
-	"sync"
-
-	"github.com/jarcoal/httpmock"
-)
-
-var (
-	client      *DefaultClient
-	app         App
-	shopID      uint64 = 123456
-	merchantID  uint64 = 789012
-	accessToken        = "test_access_token"
-	skippedMu   sync.Mutex
-	skippedRoutes []string
-)
-
-func setup() {
-	httpmock.Activate()
-	app = App{
-		PartnerID:  123456,
-		PartnerKey: "test_partner_key",
-		RedirectURL: "https://example.com/callback",
-		APIURL:     "https://open-api.test.com",
-	}
-	client = NewDefaultClient(app)
-}
-
-func teardown() {
-	httpmock.DeactivateAndReset()
-}
-
-func loadFixtureSafe(path string) (interface{}, error) {
-	f, err := os.Open("fixtures/" + path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-	var result interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-`;
-}
-
-function renderGoMod(modulePath: string, _packageName: string): string {
-  return `module ${modulePath}
-
-go 1.22
-
-require (
-	github.com/google/go-querystring v1.1.0
-	github.com/jarcoal/httpmock v1.3.1
-)
-`;
-}
-
-export function createGoRenderer(options?: {
-  package?: string;
-  module?: string;
-  legacySnakeCase?: boolean;
-}): Renderer {
-  const pkg = options?.package ?? 'goshopee';
-  const modPath = options?.module;
-  const legacySnakeCase = options?.legacySnakeCase ?? false;
+/**
+ * Create a Go renderer using a platform profile.
+ * The profile defines all platform-specific templates (client, auth, response, etc.),
+ * while the renderer handles the common pipeline (iterating modules, building structs,
+ * organizing files).
+ *
+ * @example
+ * ```ts
+ * import { createGoRenderer, shopeeProfile } from '@doclient/renderer-go';
+ * export default defineConfig({
+ *   output: createGoRenderer(shopeeProfile, { package: 'goshopee', module: '...' }),
+ * });
+ * ```
+ */
+export function createGoRenderer(
+  profile: PlatformProfile,
+  options?: {
+    package?: string;
+    module?: string;
+    legacySnakeCase?: boolean;
+  },
+): Renderer {
+  const staticServices: ServiceInfo[] = [
+    { name: 'Auth', interfaceName: 'AuthService', implName: 'AuthServiceOp' },
+  ];
 
   return {
-    name: 'go',
+    name: `go-${profile.name}`,
 
     async render(ir: IR, _config: Config): Promise<FileOutput[]> {
-      const packageName = pkg;
+      const packageName = options?.package ?? `${profile.name}go`;
+      const modPath = options?.module;
+      const legacySnakeCase = options?.legacySnakeCase ?? false;
       const typeOverrides = _config.mappings?.typeOverrides ?? {};
       const structTypeOverrides = _config.mappings?.structTypeOverrides ?? {};
 
@@ -974,7 +563,7 @@ export function createGoRenderer(options?: {
       if (modPath) {
         files.push({
           path: 'go.mod',
-          content: renderGoMod(modPath, packageName),
+          content: profile.renderGoMod(modPath, packageName),
         });
       }
 
@@ -985,9 +574,10 @@ export function createGoRenderer(options?: {
         legacySnakeCase,
       );
 
+      const build = profile.buildEndpointStructs ?? defaultBuildEndpointStructs(profile);
       for (const mod of ir.modules) {
         for (const ep of mod.endpoints) {
-          structGen.generateForEndpoint(mod.name, ep);
+          build(structGen, mod.name, ep);
         }
       }
 
@@ -1017,24 +607,19 @@ export function createGoRenderer(options?: {
       }
 
       files.push({
-        path: 'goshopee.go',
-        content: renderClientFile({
+        path: `${packageName}.go`,
+        content: profile.renderClientFile(
           packageName,
-          servicesSection: servicesSection.trimEnd(),
-          servicesInitSection: servicesInitSection.trimEnd(),
-        }),
+          servicesSection.trimEnd(),
+          servicesInitSection.trimEnd(),
+        ),
       });
 
-      files.push({ path: 'response.go', content: renderResponseFile(packageName) });
+      files.push({ path: 'response.go', content: profile.renderResponseFile(packageName) });
       files.push({ path: 'options.go', content: renderOptionsFile(packageName) });
-
-      const loggerContent = renderLoggerFile(packageName);
-      files.push({ path: 'logger.go', content: loggerContent });
-
-      files.push({ path: 'auth.go', content: renderAuthFile(packageName) });
-
-      const setupContent = renderTestSetupFile(packageName);
-      files.push({ path: 'setup_test.go', content: setupContent });
+      files.push({ path: 'logger.go', content: renderLoggerFile(packageName) });
+      files.push({ path: 'auth.go', content: profile.renderAuthFile(packageName) });
+      files.push({ path: 'setup_test.go', content: profile.renderTestSetupFile(packageName) });
 
       for (const svc of serviceList) {
         const fileName = getFileName(svc.name, legacySnakeCase);
@@ -1042,7 +627,13 @@ export function createGoRenderer(options?: {
 
         files.push({
           path: `${fileName}.gen.go`,
-          content: renderServiceFile(svc.name, fileName, svc.endpoints, structGen, packageName),
+          content: profile.renderServiceFile(
+            svc.name,
+            fileName,
+            svc.endpoints,
+            structGen,
+            packageName,
+          ),
         });
 
         files.push({
@@ -1052,19 +643,19 @@ export function createGoRenderer(options?: {
 
         files.push({
           path: `${fileName}_test.go`,
-          content: renderTestFile(svc.name, svc.endpoints, structGen, packageName),
+          content: profile.renderTestFile(svc.name, svc.endpoints, structGen, packageName),
         });
       }
 
-      files.push({
-        path: 'errors.gen.go',
-        content: renderErrorsFile(ir.errors, packageName),
-      });
+      const errorsContent = renderErrorsFile(ir.errors, packageName);
+      if (errorsContent) {
+        files.push({ path: 'errors.gen.go', content: errorsContent });
+      }
 
-      files.push({
-        path: 'common.type.gen.go',
-        content: renderEnumsFile(ir.constants, packageName),
-      });
+      const enumsContent = renderEnumsFile(ir.constants, packageName);
+      if (enumsContent) {
+        files.push({ path: 'common.type.gen.go', content: enumsContent });
+      }
 
       for (const f of ir.fixtures) {
         files.push({ path: `fixtures/${f.filename}`, content: f.content });
@@ -1073,4 +664,109 @@ export function createGoRenderer(options?: {
       return files;
     },
   };
+}
+
+/**
+ * Default struct building using profile's `responseDataFieldName`, `commonFields`,
+ * and `commonRequestFields`. Returns a function suitable for `buildEndpointStructs`.
+ */
+export function defaultBuildEndpointStructs(profile: PlatformProfile) {
+  return function build(structGen: StructGenerator, moduleName: string, ep: IREndpoint): void {
+    const fileName = getFileName(moduleName, structGen.legacySnakeCase);
+
+    const skipReqParam =
+      profile.commonRequestFields && profile.commonRequestFields.length > 0
+        ? (name: string) => profile.commonRequestFields.includes(name)
+        : undefined;
+
+    structGen.generateStruct(
+      [moduleName, ep.name, 'Request'],
+      ep.requestParams,
+      ep.method === 'GET',
+      true,
+      fileName,
+      skipReqParam,
+    );
+
+    const respDataChain = [moduleName, ep.name, 'ResponseData'];
+    const respDataStruct = structGen.generateResponseDataWith(
+      profile.responseDataFieldName,
+      respDataChain,
+      ep.responseParams,
+      fileName,
+    );
+
+    const mainResp: GoStruct = {
+      name: '',
+      fields: [
+        {
+          name: '',
+          type: 'BaseResponse',
+          jsonTag: ',inline',
+          urlTag: '',
+          comment: 'Common response fields',
+        },
+      ],
+      fileName,
+    };
+
+    const commonFields = new Set(profile.commonFields);
+    const dataParam = ep.responseParams.find((p) => p.name === profile.responseDataFieldName);
+
+    if (respDataStruct) {
+      mainResp.fields.push({
+        name: 'Response',
+        type: respDataStruct.name,
+        jsonTag: profile.responseDataFieldName,
+        urlTag: '',
+        comment: 'Response data',
+      });
+    } else if (dataParam && dataParam.type === 'object[]') {
+      mainResp.fields.push({
+        name: 'Response',
+        type: '[]interface{}',
+        jsonTag: profile.responseDataFieldName,
+        urlTag: '',
+        comment: 'Response data',
+      });
+    } else if (dataParam && !dataParam.type.startsWith('object')) {
+      const scalarType = goScalarType(dataParam.type);
+      mainResp.fields.push({
+        name: 'Response',
+        type: scalarType,
+        jsonTag: profile.responseDataFieldName,
+        urlTag: '',
+        comment: 'Response data',
+      });
+    }
+
+    for (const p of ep.responseParams) {
+      if (commonFields.has(p.name) || p.name === profile.responseDataFieldName) continue;
+      const field = structGen.paramToField(p, respDataChain, false, fileName);
+      if (field) {
+        field.jsonTag += ',omitempty';
+        mainResp.fields.push(field);
+      }
+    }
+
+    const sig = structGen.getSignature(mainResp);
+    mainResp.name = structGen.pickName(sig, [moduleName, ep.name, 'Response']);
+    structGen.allStructs.set(mainResp.name, mainResp);
+    structGen.chainToName.set([moduleName, ep.name, 'Response'].join('.'), mainResp.name);
+  };
+}
+
+function goScalarType(irType: string): string {
+  switch (irType) {
+    case 'integer':
+      return 'int64';
+    case 'number':
+      return 'float64';
+    case 'boolean':
+      return 'bool';
+    case 'string':
+      return 'string';
+    default:
+      return 'interface{}';
+  }
 }

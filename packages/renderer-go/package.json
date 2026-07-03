@@ -22,7 +22,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cp src/lsp-stubs.go dist/lsp-stubs.go && rm -rf dist/scaffolds && cp -r src/scaffolds dist/",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

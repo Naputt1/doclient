@@ -2,19 +2,44 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { argv, cwd, exit } from 'node:process';
 import { spawn } from 'node:child_process';
-import type { Config } from '@doclient/core';
-import { runPipeline } from '@doclient/core';
-
-// Re-exported for convenience — import { defineConfig } from '@doclient/cli'
-export {
-  defineConfig,
+import type {
+  Config,
+  MappingsConfig,
+  EnumDef,
+  SourceAdapter,
+  Renderer,
+  FileOutput,
+  IR,
+} from '@doclient/core';
+import {
+  defineConfig as coreDefineConfig,
   defineRenderer,
   runPipeline,
   createCachedFetcher,
   filterByStaticModules,
   getModuleDisplayName,
   toPascalCase,
+  type IRModule,
+  type IREndpoint,
+  type IRParam,
+  type IRConstant,
+  type IRConstantValue,
+  type IRError,
+  type IRFixture,
 } from '@doclient/core';
+import type { ProfileConfig, PlatformProfile } from '@doclient/renderer-go';
+import { createGoRenderer, defineProfile } from '@doclient/renderer-go';
+import { scaffoldCommand } from './scaffold.js';
+
+// Re-exported for convenience — import { defineConfig, ... } from '@doclient/cli'
+export {
+  defineRenderer,
+  runPipeline,
+  createCachedFetcher,
+  filterByStaticModules,
+  getModuleDisplayName,
+  toPascalCase,
+};
 export type {
   IR,
   IRModule,
@@ -30,10 +55,68 @@ export type {
   SourceAdapter,
   Renderer,
   FileOutput,
-} from '@doclient/core';
+};
+
+interface CliConfig extends Omit<Config, 'output'> {
+  output?: Renderer;
+  profile?: ProfileConfig | PlatformProfile;
+  packageName?: string;
+  module?: string;
+}
+
+export function defineConfig(config: CliConfig): Config {
+  if (config.profile) {
+    if (config.output) throw new Error('Provide either profile or output, not both');
+    const p: PlatformProfile =
+      'renderClientFile' in config.profile
+        ? (config.profile as PlatformProfile)
+        : defineProfile(config.profile as ProfileConfig);
+    config.output = createGoRenderer(p, {
+      package: config.packageName,
+      module: config.module,
+    });
+  }
+  if (!config.output) throw new Error('Config must have a profile or output');
+  return coreDefineConfig(config as Config);
+}
+
+function parseArg(args: string[], name: string, short?: string): string | undefined {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === `--${name}` || (short && args[i] === `-${short}`)) {
+      return args[i + 1];
+    }
+  }
+}
 
 export async function main(): Promise<void> {
-  const args = argv.slice(2);
+  const allArgs = argv.slice(2);
+
+  if (allArgs[0] === 'scaffold') {
+    let profile = parseArg(allArgs, 'profile', 'p');
+    if (!profile) {
+      const candidates = ['doclient.config.ts', 'doclient.config.js', 'doclient.config.mjs'];
+      for (const candidate of candidates) {
+        if (existsSync(resolve(cwd(), candidate))) {
+          profile = candidate;
+          break;
+        }
+      }
+      if (!profile) {
+        console.error(
+          'Error: --profile is required (or create doclient.config.ts with a profile field)',
+        );
+        exit(1);
+      }
+    }
+    await scaffoldCommand({
+      profile,
+      dir: parseArg(allArgs, 'dir', 'd'),
+      module: parseArg(allArgs, 'module', 'm'),
+    });
+    return;
+  }
+
+  const args = allArgs;
   let configPath = '';
   let cache = false;
 
@@ -48,11 +131,19 @@ export async function main(): Promise<void> {
 
 Usage:
   doclient [--config <config-file>]
+  doclient scaffold --profile <path> [options]
 
 Options:
   -c, --config   Path to config file (defaults to doclient.config.ts)
   --out-dir      Output directory (overrides config.outputDir)
   --cache        Cache API responses in .doclient-cache under output dir
+
+Scaffold subcommand:
+  doclient scaffold
+    Generate LSP stubs and template boilerplate for a profile.
+    --profile, -p   Path to profile file (default: doclient.config.ts)
+    --dir, -d       Output directory (default: templates/ next to profile)
+    --module, -m    Go module path (generates go.mod)
   -h, --help     Show this help
 `);
       exit(0);

@@ -1,0 +1,14 @@
+{
+  "name": "example-lazada-go",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@doclient/cli": "workspace:*",
+    "@doclient/core": "workspace:*",
+    "@doclient/renderer-go": "workspace:*",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}

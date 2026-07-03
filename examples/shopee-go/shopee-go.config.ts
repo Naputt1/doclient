@@ -1,11 +1,12 @@
 import { defineConfig } from '@doclient/cli';
 import { createGoRenderer } from '@doclient/renderer-go';
+import { shopeeProfile } from './profile.js';
 import { shopeeSource } from './source-shopee';
 
 export default defineConfig({
   name: 'go-shopee-v2',
   source: shopeeSource,
-  output: createGoRenderer({
+  output: createGoRenderer(shopeeProfile, {
     package: 'goshopee',
     module: 'github.com/naputt1/go-shopee-v2',
   }),
