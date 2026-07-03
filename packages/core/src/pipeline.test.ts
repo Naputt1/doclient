@@ -64,7 +64,7 @@ describe('getModuleDisplayName', () => {
 });
 
 describe('filterByStaticModules', () => {
-  it('removes endpoints matching staticModules', () => {
+  it('removes endpoints matching by last segment (default)', () => {
     const ir: IR = {
       name: 'test',
       modules: [
@@ -107,12 +107,122 @@ describe('filterByStaticModules', () => {
       errors: [],
       fixtures: [],
     };
-    filterByStaticModules(ir, ['add']);
+    filterByStaticModules(ir, { values: ['add'] });
     expect(ir.modules[0].endpoints.length).toBe(1);
     expect(ir.modules[0].endpoints[0].name).toBe('Get');
   });
 
-  it('does nothing when staticModules is empty', () => {
+  it('removes endpoints matching by explicit segment index', () => {
+    const ir: IR = {
+      name: 'test',
+      modules: [
+        {
+          name: 'Product',
+          moduleId: 1,
+          endpoints: [
+            {
+              name: 'Add',
+              method: 'POST',
+              path: '/product/add',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'get.product.add',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+            {
+              name: 'Get',
+              method: 'GET',
+              path: '/product/get',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'get.product.get',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+            {
+              name: 'List',
+              method: 'GET',
+              path: '/order/list',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'get.order.list',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+          ],
+        },
+      ],
+      constants: [],
+      errors: [],
+      fixtures: [],
+    };
+    filterByStaticModules(ir, { values: ['product'], segment: 1 });
+    expect(ir.modules[0].endpoints.length).toBe(1);
+    expect(ir.modules[0].endpoints[0].name).toBe('List');
+  });
+
+  it('removes endpoints matching by first segment', () => {
+    const ir: IR = {
+      name: 'test',
+      modules: [
+        {
+          name: 'Product',
+          moduleId: 1,
+          endpoints: [
+            {
+              name: 'Add',
+              method: 'POST',
+              path: '/product/add',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'v2.product.add',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+            {
+              name: 'Get',
+              method: 'GET',
+              path: '/product/get',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'v3.product.get',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+          ],
+        },
+      ],
+      constants: [],
+      errors: [],
+      fixtures: [],
+    };
+    filterByStaticModules(ir, { values: ['v2'], segment: 0 });
+    expect(ir.modules[0].endpoints.length).toBe(1);
+    expect(ir.modules[0].endpoints[0].name).toBe('Get');
+  });
+
+  it('does nothing when staticModules is undefined', () => {
     const ir: IR = {
       name: 'test',
       modules: [
@@ -143,6 +253,71 @@ describe('filterByStaticModules', () => {
     };
     filterByStaticModules(ir, undefined);
     expect(ir.modules[0].endpoints.length).toBe(1);
+  });
+
+  it('does nothing when values array is empty', () => {
+    const ir: IR = {
+      name: 'test',
+      modules: [
+        {
+          name: 'Product',
+          moduleId: 1,
+          endpoints: [
+            {
+              name: 'Add',
+              method: 'POST',
+              path: '/product/add',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'product.add',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+          ],
+        },
+      ],
+      constants: [],
+      errors: [],
+      fixtures: [],
+    };
+    filterByStaticModules(ir, { values: [] });
+    expect(ir.modules[0].endpoints.length).toBe(1);
+  });
+
+  it('throws on out-of-bounds segment index', () => {
+    const ir: IR = {
+      name: 'test',
+      modules: [
+        {
+          name: 'Product',
+          moduleId: 1,
+          endpoints: [
+            {
+              name: 'Add',
+              method: 'POST',
+              path: '/product/add',
+              fullPath: '',
+              description: '',
+              docUrl: '',
+              apiType: 'Shop',
+              isUpload: false,
+              fullApiName: 'product.add',
+              requestParams: [],
+              responseParams: [],
+              errors: [],
+            },
+          ],
+        },
+      ],
+      constants: [],
+      errors: [],
+      fixtures: [],
+    };
+    expect(() => filterByStaticModules(ir, { values: ['product'], segment: 5 })).toThrow();
   });
 
   it('does nothing when ignoreAPIs is empty array', async () => {

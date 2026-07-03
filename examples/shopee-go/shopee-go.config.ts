@@ -156,5 +156,6 @@ export default defineConfig({
       },
     },
     ignoreAPIs: ['v2.public.get_access_token', 'v2.public.refresh_access_token'],
+    staticModules: { values: ['public'], segment: 1 },
   },
 });

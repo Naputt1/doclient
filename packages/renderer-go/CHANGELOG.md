@@ -1,6 +1,6 @@
 # @doclient/renderer-go
 
-## 0.0.2
+## 0.0.3
 
 ### Patch Changes
 
@@ -15,6 +15,14 @@
 - feat: `lsp-stubs.go` source file — canonical Go stub source, validated by `gofmt`, copied to `dist/` at build time
 - fix: `ProfileConfig.renderClientFile` parameter types infer properly (no implicit `any`)
 - chore: bundle size 61KB → 36KB (removed built-in Shopee/Lazada templates)
+- fix: include dist/ directory in published packages
+- Updated dependencies
+  - @doclient/core@0.0.3
+
+## 0.0.2
+
+### Patch Changes
+
 - fix: include dist/ directory in published packages
 - Updated dependencies
   - @doclient/core@0.0.2

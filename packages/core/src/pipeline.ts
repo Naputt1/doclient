@@ -1,4 +1,4 @@
-import type { Config, FileOutput } from './types.js';
+import type { Config, FileOutput, StaticModulesConfig } from './types.js';
 
 function applyIgnoreAPIs(ir: import('./types.js').IR, ignoreAPIs?: string[]): void {
   if (!ignoreAPIs?.length) return;
@@ -8,11 +8,26 @@ function applyIgnoreAPIs(ir: import('./types.js').IR, ignoreAPIs?: string[]): vo
   ir.modules = ir.modules.filter((mod) => mod.endpoints.length > 0);
 }
 
-export function filterByStaticModules(ir: import('./types.js').IR, staticModules?: string[]): void {
-  if (!staticModules?.length) return;
+function getApiSegment(fullApiName: string, segment: number): string {
+  const parts = fullApiName.split('.');
+  const idx = segment < 0 ? parts.length + segment : segment;
+  if (idx < 0 || idx >= parts.length) {
+    throw new Error(
+      `fullApiName "${fullApiName}" has ${parts.length} segment(s) — cannot resolve segment index ${segment} (resolved to ${idx})`,
+    );
+  }
+  return parts[idx];
+}
+
+export function filterByStaticModules(
+  ir: import('./types.js').IR,
+  staticModules?: StaticModulesConfig,
+): void {
+  if (!staticModules?.values?.length) return;
+  const segment = staticModules.segment ?? -1;
   for (const mod of ir.modules) {
     mod.endpoints = mod.endpoints.filter(
-      (ep) => !staticModules!.includes(ep.fullApiName.split('.')[1] ?? ''),
+      (ep) => !staticModules.values.includes(getApiSegment(ep.fullApiName, segment)),
     );
   }
 }

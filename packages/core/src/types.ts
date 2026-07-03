@@ -66,12 +66,20 @@ export interface Config {
   mappings?: MappingsConfig;
 }
 
+export interface StaticModulesConfig {
+  values: string[];
+  /** Dot-delimited segment index of fullApiName to match against.
+   *  Defaults to -1 (last segment). Use 0 for first, 1 for second, etc.
+   *  Negative values index from the end. */
+  segment?: number;
+}
+
 export interface MappingsConfig {
   typeOverrides?: Record<string, string>;
   structTypeOverrides?: Record<string, Record<string, string>>;
   enums?: Record<string, EnumDef>;
   ignoreAPIs?: string[];
-  staticModules?: string[];
+  staticModules?: StaticModulesConfig;
 }
 
 export interface EnumDef {
