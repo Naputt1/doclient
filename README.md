@@ -97,7 +97,10 @@ doclient scaffold --profile <path> [options]
 Options:
   -c, --config <path>   Config file path (default: doclient.config.ts)
   --out-dir <path>      Override output directory
-  --cache               Cache API responses in .doclient-cache
+  --cache               Cache API responses in .doclient-cache under output dir.
+                        Cached responses persist forever (no TTL). To refresh,
+                        delete the cache dir or omit --cache for one uncached run
+                        (existing cache files are left untouched for later reuse).
   -h, --help            Show help
 
 Scaffold:
