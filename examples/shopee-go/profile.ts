@@ -24,8 +24,8 @@ export const shopeeProfile = defineProfile({
     { name: 'Warning', type: 'string', jsonTag: 'warning,omitempty', urlTag: '', comment: '' },
   ],
 
-  extraMethodParams: ', sid uint64, tok string',
-  extraMethodArgs: 'sid, tok',
+  extraMethodParams: ', sid uint64, mid uint64, tok string',
+  extraMethodArgs: 'sid, mid, tok',
 
   renderClientFile: (pkg, services, init) =>
     clientTpl.render({

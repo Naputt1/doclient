@@ -486,21 +486,21 @@ func (c *Client[T]) Delete(ctx context.Context, path string, sid uint64, tok str
 	return c.CreateAndDo(ctx, "DELETE", path, nil, nil, nil, nil, sid, 0, tok)
 }
 
-func (c *Client[T]) Upload(ctx context.Context, relPath, fieldname, filename string, resource interface{}, sid uint64, tok string) error {
-	req, err := c.NewfileUploadRequest(ctx, relPath, fieldname, filename, sid, tok)
+func (c *Client[T]) Upload(ctx context.Context, relPath, fieldname, filename string, resource interface{}, sid uint64, mid uint64, tok string) error {
+	req, err := c.NewfileUploadRequest(ctx, relPath, fieldname, filename, sid, mid, tok)
 	if err != nil { return err }
 	_, err = c.doGetHeaders(req, resource, true)
 	return err
 }
 
-func (c *Client[T]) UploadFromReader(ctx context.Context, relPath, fieldname, filename string, reader io.Reader, resource interface{}, sid uint64, tok string) error {
-	req, err := c.NewUploadFromReaderRequest(ctx, relPath, fieldname, filename, reader, sid, tok)
+func (c *Client[T]) UploadFromReader(ctx context.Context, relPath, fieldname, filename string, reader io.Reader, resource interface{}, sid uint64, mid uint64, tok string) error {
+	req, err := c.NewUploadFromReaderRequest(ctx, relPath, fieldname, filename, reader, sid, mid, tok)
 	if err != nil { return err }
 	_, err = c.doGetHeaders(req, resource, true)
 	return err
 }
 
-func (c *Client[T]) NewfileUploadRequest(ctx context.Context, relPath, paramName, filename string, sid uint64, tok string) (*http.Request, error) {
+func (c *Client[T]) NewfileUploadRequest(ctx context.Context, relPath, paramName, filename string, sid uint64, mid uint64, tok string) (*http.Request, error) {
 	if strings.HasPrefix(relPath, "/") {
 		relPath = strings.TrimLeft(relPath, "/")
 	}
@@ -522,18 +522,18 @@ func (c *Client[T]) NewfileUploadRequest(ctx context.Context, relPath, paramName
 	err = writer.Close()
 	if err != nil { return nil, err }
 
-	ctx = context.WithValue(ctx, authKey, requestAuth{shopID: sid, token: tok})
+	ctx = context.WithValue(ctx, authKey, requestAuth{shopID: sid, merchantID: mid, token: tok})
 	req, err := http.NewRequestWithContext(ctx, "POST", uri, body)
 	if err != nil { return nil, err }
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("User-Agent", UserAgent)
-	c.makeSignature(req, sid, 0, tok)
+	c.makeSignature(req, sid, mid, tok)
 
 	return req, nil
 }
 
-func (c *Client[T]) NewUploadFromReaderRequest(ctx context.Context, relPath, paramName, filename string, reader io.Reader, sid uint64, tok string) (*http.Request, error) {
+func (c *Client[T]) NewUploadFromReaderRequest(ctx context.Context, relPath, paramName, filename string, reader io.Reader, sid uint64, mid uint64, tok string) (*http.Request, error) {
 	if strings.HasPrefix(relPath, "/") {
 		relPath = strings.TrimLeft(relPath, "/")
 	}
@@ -551,13 +551,13 @@ func (c *Client[T]) NewUploadFromReaderRequest(ctx context.Context, relPath, par
 	err = writer.Close()
 	if err != nil { return nil, err }
 
-	ctx = context.WithValue(ctx, authKey, requestAuth{shopID: sid, token: tok})
+	ctx = context.WithValue(ctx, authKey, requestAuth{shopID: sid, merchantID: mid, token: tok})
 	req, err := http.NewRequestWithContext(ctx, "POST", uri, body)
 	if err != nil { return nil, err }
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("User-Agent", UserAgent)
-	c.makeSignature(req, sid, 0, tok)
+	c.makeSignature(req, sid, mid, tok)
 
 	return req, nil
 }
