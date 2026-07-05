@@ -293,6 +293,7 @@ func (c *Client[T]) doGetHeaders(req *http.Request, v interface{}, skipBody bool
 	var err error
 
 	retries := c.retries
+	refreshAttempts := 0
 	c.attempts = 0
 	c.logRequest(req, skipBody)
 
@@ -318,7 +319,7 @@ func (c *Client[T]) doGetHeaders(req *http.Request, v interface{}, skipBody bool
 				shopeeErr = re.ShopeeError
 			}
 
-			if shopeeErr == "error_invalid_access_token" || shopeeErr == "error_access_token_expired" || shopeeErr == "invalid_access_token" || shopeeErr == "invalid_acceess_token" {
+			if refreshAttempts < c.retries && (shopeeErr == "error_invalid_access_token" || shopeeErr == "error_access_token_expired" || shopeeErr == "invalid_access_token" || shopeeErr == "invalid_acceess_token") {
 				a := authFromContext(req.Context())
 				refreshRes, err := c.Auth.RefreshAccessToken(req.Context(), a.shopID, a.merchantID, c.RefreshToken)
 				if err == nil {
@@ -330,6 +331,7 @@ func (c *Client[T]) doGetHeaders(req *http.Request, v interface{}, skipBody bool
 					c.mu.Unlock()
 					c.makeSignature(req, a.shopID, a.merchantID, refreshRes.AccessToken)
 					resp.Body.Close()
+					refreshAttempts++
 					continue
 				}
 			}
