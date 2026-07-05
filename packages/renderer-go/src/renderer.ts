@@ -235,6 +235,21 @@ export class StructGenerator {
     };
   }
 
+  /**
+   * Returns a canonical key identifying a struct's structural identity.
+   *
+   * The signature is built purely from each field's JSON tag, type, and URL
+   * tag — it has no knowledge of the API endpoint, module, or semantic context
+   * that produced the struct. Any two structs with identical field signatures
+   * will be treated as the same type and merged into a single Go struct
+   * definition.
+   *
+   * This is an intentional design choice: without dedup, every unique chain
+   * of nested response shapes would generate its own named type, leading to
+   * struct explosion. The trade-off is that structurally identical-but-
+   * semantically-different shapes (e.g. two endpoints each returning
+   * `{id: int64, name: string}` from different contexts) will share one type.
+   */
   getSignature(s: GoStruct): string {
     const parts: string[] = [];
     for (const f of s.fields) {
