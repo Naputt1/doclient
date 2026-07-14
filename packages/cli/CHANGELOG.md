@@ -4,6 +4,19 @@
 
 ### Patch Changes
 
+- a06f67a: Add generic Ptr[T] helper function generation
+  Fix missing .d.ts files in npm package
+  Refactor createGoRenderer to profile-based architecture
+  Fix Shopee NewfileUploadRequest missing merchant_id
+  Improve client retry logic
+  Export defineProfile, loadTemplate, PlatformProfile
+- Updated dependencies [a06f67a]
+  - @doclient/renderer-go@0.0.3
+
+## 0.0.3
+
+### Patch Changes
+
 - feat: refactor to use profile-based renderer (`defineProfile`, `loadTemplate`, `.go` template files, `doclient scaffold` command)
 - feat: re-export core API (defineConfig, IR types, etc.) from @doclient/cli
 - feat: auto-discover doclient.config.ts when --config is omitted

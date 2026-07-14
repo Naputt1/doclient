@@ -4,6 +4,17 @@
 
 ### Patch Changes
 
+- a06f67a: Add generic Ptr[T] helper function generation
+  Fix missing .d.ts files in npm package
+  Refactor createGoRenderer to profile-based architecture
+  Fix Shopee NewfileUploadRequest missing merchant_id
+  Improve client retry logic
+  Export defineProfile, loadTemplate, PlatformProfile
+
+## 0.0.3
+
+### Patch Changes
+
 - feat: declarative `defineProfile()` API with `ProfileConfig` — platform profiles are now 20-40 lines of config
 - feat: Go-native template files with marker syntax (`__PACKAGE_NAME__` inline, `// @SERVICES_SECTION` comment markers) — syntactically valid Go for LSP support
 - feat: `loadTemplate()` with auto-resolving relative paths via V8 stack API (no `import.meta.url` boilerplate)
