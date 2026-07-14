@@ -1,5 +1,11 @@
 # @doclient/renderer-go
 
+## 0.0.5
+
+### Patch Changes
+
+- 56f0e8e: Add mid uint64 parameter to client Get/Post/Put/Delete methods
+
 ## 0.0.4
 
 ### Patch Changes
