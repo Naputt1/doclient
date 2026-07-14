@@ -16,7 +16,7 @@ interface ScrapedProfile {
   [key: string]: unknown;
 }
 
-function findProfileExport(mod: Record<string, unknown>, profilePath: string): ScrapedProfile {
+export function findProfileExport(mod: Record<string, unknown>, profilePath: string): ScrapedProfile {
   const defaultExport = mod.default;
   if (defaultExport && typeof defaultExport === 'object' && defaultExport !== null) {
     if ('profile' in defaultExport) {
