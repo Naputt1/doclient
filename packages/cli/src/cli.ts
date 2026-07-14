@@ -27,8 +27,6 @@ import {
   type IRError,
   type IRFixture,
 } from '@doclient/core';
-import type { ProfileConfig, PlatformProfile } from '@doclient/renderer-go';
-import { createGoRenderer, defineProfile } from '@doclient/renderer-go';
 import { scaffoldCommand } from './scaffold.js';
 
 // Re-exported for convenience — import { defineConfig, ... } from '@doclient/cli'
@@ -57,27 +55,8 @@ export type {
   FileOutput,
 };
 
-interface CliConfig extends Omit<Config, 'output'> {
-  output?: Renderer;
-  profile?: ProfileConfig | PlatformProfile;
-  packageName?: string;
-  module?: string;
-}
-
-export function defineConfig(config: CliConfig): Config {
-  if (config.profile) {
-    if (config.output) throw new Error('Provide either profile or output, not both');
-    const p: PlatformProfile =
-      'renderClientFile' in config.profile
-        ? (config.profile as PlatformProfile)
-        : defineProfile(config.profile as ProfileConfig);
-    config.output = createGoRenderer(p, {
-      package: config.packageName,
-      module: config.module,
-    });
-  }
-  if (!config.output) throw new Error('Config must have a profile or output');
-  return coreDefineConfig(config as Config);
+export function defineConfig(config: Config): Config {
+  return coreDefineConfig(config);
 }
 
 export function parseArg(args: string[], name: string, short?: string): string | undefined {
