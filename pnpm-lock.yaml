@@ -81,9 +81,6 @@ importers:
       '@doclient/core':
         specifier: workspace:*
         version: link:../core
-      '@doclient/renderer-go':
-        specifier: workspace:*
-        version: link:../renderer-go
       tsx:
         specifier: ^4.19.0
         version: 4.22.4
