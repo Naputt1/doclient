@@ -32,6 +32,4 @@ describe('defineConfig', () => {
     expect(cfg.name).toBe('test');
     expect(cfg.output).toBe(mockRenderer);
   });
-
-
 });
