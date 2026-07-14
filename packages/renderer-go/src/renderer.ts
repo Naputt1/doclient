@@ -487,6 +487,15 @@ func WithMetaDefault(meta any) DefaultOption {
 `;
 }
 
+export function renderPtrFile(packageName: string): string {
+  return `package ${packageName}
+
+func Ptr[T any](v T) *T {
+	return &v
+}
+`;
+}
+
 export function renderLoggerFile(packageName: string): string {
   return `package ${packageName}
 
@@ -633,6 +642,7 @@ export function createGoRenderer(
       files.push({ path: 'response.go', content: profile.renderResponseFile(packageName) });
       files.push({ path: 'options.go', content: renderOptionsFile(packageName) });
       files.push({ path: 'logger.go', content: renderLoggerFile(packageName) });
+      files.push({ path: 'ptr.go', content: renderPtrFile(packageName) });
       files.push({ path: 'auth.go', content: profile.renderAuthFile(packageName) });
       files.push({ path: 'setup_test.go', content: profile.renderTestSetupFile(packageName) });
 
