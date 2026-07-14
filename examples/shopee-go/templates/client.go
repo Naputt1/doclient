@@ -463,20 +463,20 @@ func (c *Client[T]) createAndDoGetHeaders(ctx context.Context, method, relPath s
 	return c.doGetHeaders(req, resource, false)
 }
 
-func (c *Client[T]) Get(ctx context.Context, path string, resource, options interface{}, sid uint64, tok string) error {
-	return c.CreateAndDo(ctx, "GET", path, nil, options, nil, resource, sid, 0, tok)
+func (c *Client[T]) Get(ctx context.Context, path string, resource, options interface{}, sid uint64, mid uint64, tok string) error {
+	return c.CreateAndDo(ctx, "GET", path, nil, options, nil, resource, sid, mid, tok)
 }
 
-func (c *Client[T]) Post(ctx context.Context, path string, data, resource interface{}, sid uint64, tok string) error {
-	return c.CreateAndDo(ctx, "POST", path, data, nil, nil, resource, sid, 0, tok)
+func (c *Client[T]) Post(ctx context.Context, path string, data, resource interface{}, sid uint64, mid uint64, tok string) error {
+	return c.CreateAndDo(ctx, "POST", path, data, nil, nil, resource, sid, mid, tok)
 }
 
-func (c *Client[T]) Put(ctx context.Context, path string, data, resource interface{}, sid uint64, tok string) error {
-	return c.CreateAndDo(ctx, "PUT", path, data, nil, nil, resource, sid, 0, tok)
+func (c *Client[T]) Put(ctx context.Context, path string, data, resource interface{}, sid uint64, mid uint64, tok string) error {
+	return c.CreateAndDo(ctx, "PUT", path, data, nil, nil, resource, sid, mid, tok)
 }
 
-func (c *Client[T]) Delete(ctx context.Context, path string, sid uint64, tok string) error {
-	return c.CreateAndDo(ctx, "DELETE", path, nil, nil, nil, nil, sid, 0, tok)
+func (c *Client[T]) Delete(ctx context.Context, path string, sid uint64, mid uint64, tok string) error {
+	return c.CreateAndDo(ctx, "DELETE", path, nil, nil, nil, nil, sid, mid, tok)
 }
 
 func (c *Client[T]) Upload(ctx context.Context, relPath, fieldname, filename string, resource interface{}, sid uint64, mid uint64, tok string) error {
