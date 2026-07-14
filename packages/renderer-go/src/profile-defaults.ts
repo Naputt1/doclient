@@ -437,16 +437,8 @@ import (
         out += `\tvar req ${reqType}
 `;
       }
-      const extraArgs = extraMethodArgs
-        ? ', ' +
-          extraMethodArgs
-            .replace(/^,\s*/, '')
-            .split(',')
-            .map((a) => a.trim().split(/\s+/).pop()!)
-            .join(', ')
-        : '';
       out += `\tctx := context.Background()
-\tres, err := client.${moduleName}.${ep.name}(ctx, shopID${hasReq ? ', req' : ''}${extraArgs})
+\tres, err := client.${moduleName}.${ep.name}(ctx, sid, mid, tok${hasReq ? ', req' : ''})
 `;
     }
     out += `\tif err != nil {
