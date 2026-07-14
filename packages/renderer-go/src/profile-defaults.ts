@@ -134,8 +134,8 @@ import (
 \t// ${ep.docUrl}
 `;
     if (ep.isUpload) {
-      out += `\t${ep.name}(ctx context.Context${extraMethodParams}, filename string, tok string) (*${respType}, error)
-\t${ep.name}FromReader(ctx context.Context${extraMethodParams}, filename string, reader io.Reader, tok string) (*${respType}, error)
+      out += `\t${ep.name}(ctx context.Context${extraMethodParams}, filename string) (*${respType}, error)
+\t${ep.name}FromReader(ctx context.Context${extraMethodParams}, filename string, reader io.Reader) (*${respType}, error)
 `;
     } else {
       const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
@@ -159,14 +159,14 @@ type ${moduleName}ServiceOp[T any] struct {
 `;
     const gm = goClientMethod(ep.method);
     if (ep.isUpload) {
-      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context${extraMethodParams}, filename string, tok string) (*${respType}, error) {
+      out += `func (s *${moduleName}ServiceOp[T]) ${ep.name}(ctx context.Context${extraMethodParams}, filename string) (*${respType}, error) {
 \tpath := "/${ep.path}"
 \tresp := new(${respType})
 \terr := s.client.Upload(ctx, path, "image", filename, resp${extraMethodArgs ? ', ' + extraMethodArgs : ''})
 \treturn resp, err
 }
 
-func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context${extraMethodParams}, filename string, reader io.Reader, tok string) (*${respType}, error) {
+func (s *${moduleName}ServiceOp[T]) ${ep.name}FromReader(ctx context.Context${extraMethodParams}, filename string, reader io.Reader) (*${respType}, error) {
 \tpath := "/${ep.path}"
 \tresp := new(${respType})
 \terr := s.client.UploadFromReader(ctx, path, "image", filename, reader, resp${extraMethodArgs ? ', ' + extraMethodArgs : ''})
@@ -417,8 +417,16 @@ import (
 
 `;
     if (ep.isUpload) {
+      const extraArgs = extraMethodArgs
+        ? ', ' +
+          extraMethodArgs
+            .replace(/^,\s*/, '')
+            .split(',')
+            .map((a) => a.trim().split(/\s+/).pop()!)
+            .join(', ')
+        : '';
       out += `\tctx := context.Background()
-\tres, err := client.${moduleName}.${ep.name}(ctx, shopID, "fixtures/test.jpg", accessToken)
+\tres, err := client.${moduleName}.${ep.name}(ctx${extraArgs}, "fixtures/test.jpg")
 `;
     } else {
       const reqType = structGen.getNameForChain(moduleName, ep.name, 'Request');
