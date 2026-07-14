@@ -1,5 +1,13 @@
 # @doclient/renderer-go
 
+## 0.0.4
+
+### Patch Changes
+
+- 090965c: Fix upload method signatures: remove duplicate tok parameter from upload templates
+  Fix upload test calls: use extraMethodArgs instead of hardcoded args
+  Remove renderer-go dependency from @doclient/cli (dynamic import for scaffold)
+
 ## 0.0.3
 
 ### Patch Changes
