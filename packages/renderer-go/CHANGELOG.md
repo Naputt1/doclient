@@ -1,5 +1,11 @@
 # @doclient/renderer-go
 
+## 0.0.6
+
+### Patch Changes
+
+- f70e23c: Fix: remove refreshAttempts guard that blocked auto-refresh when retries=0
+
 ## 0.0.5
 
 ### Patch Changes
